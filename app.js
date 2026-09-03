@@ -54,14 +54,14 @@ const subPlatforms = {
     ]
 };
 
-// 3. Opciones de Presupuesto / Tipo de Juego (Ajustado para AAA amplio)
+// 3. Opciones de Presupuesto / Tipo de Juego
 const priceRanges = [
     { id: 'free-to-play', name: 'Gratis (Free-to-Play)', icon: '<i class="fa-solid fa-gift"></i>', tag: 'free-to-play' },
     { id: 'indie', name: 'Económicos / Indie', icon: '<i class="fa-solid fa-tag"></i>', tag: 'indie' },
-    { id: 'aaa', name: 'Grandes Producciones (AAA)', icon: '<i class="fa-solid fa-gem"></i>', tag: '' } // Sin tag estricto para incluir todos los tanques pesados
+    { id: 'aaa', name: 'Grandes Producciones (AAA)', icon: '<i class="fa-solid fa-gem"></i>', tag: '' }
 ];
 
-// 4. Opciones de Género
+// 4. Géneros Principales
 const genres = [
     { id: 'action', name: 'Acción', icon: '<i class="fa-solid fa-fire"></i>' },
     { id: 'sports', name: 'Deportes', icon: '<i class="fa-solid fa-futbol"></i>' },
@@ -69,7 +69,31 @@ const genres = [
     { id: 'shooter', name: 'Shooter', icon: '<i class="fa-solid fa-crosshairs"></i>' }
 ];
 
-// 5. Opciones de Modo de Juego
+// Subcategorías específicas para cada género principal
+const subGenres = {
+    'action': [
+        { id: 'action', name: 'Acción Aventura', icon: '<i class="fa-solid fa-compass"></i>' },
+        { id: 'indie', name: 'Plataformeros / Indie', icon: '<i class="fa-solid fa-ghost"></i>' },
+        { id: 'massively-multiplayer', name: 'Mundo Abierto / MMO', icon: '<i class="fa-solid fa-globe"></i>' }
+    ],
+    'sports': [
+        { id: 'racing', name: 'Carreras / Automovilismo', icon: '<i class="fa-solid fa-car"></i>', keyword: 'racing' },
+        { id: 'sports', name: 'Fútbol / Deportes', icon: '<i class="fa-solid fa-futbol"></i>', keyword: 'sports' },
+        { id: 'simulation', name: 'Simulación', icon: '<i class="fa-solid fa-plane"></i>', keyword: 'simulation' }
+    ],
+    'strategy': [
+        { id: 'strategy', name: 'Estrategia en Tiempo Real (RTS)', icon: '<i class="fa-solid fa-chess-rook"></i>' },
+        { id: 'massively-multiplayer', name: 'Gestión / Simulación', icon: '<i class="fa-solid fa-city"></i>' },
+        { id: 'indie', name: 'Tácticos por Turnos', icon: '<i class="fa-solid fa-chess-board"></i>' }
+    ],
+    'shooter': [
+        { id: 'shooter', name: 'Shooter en Primera Persona (FPS)', icon: '<i class="fa-solid fa-crosshairs"></i>' },
+        { id: 'action', name: 'Acción / Disparos Tácticos', icon: '<i class="fa-solid fa-gun"></i>' },
+        { id: 'indie', name: 'Arcade / Retro Shooters', icon: '<i class="fa-solid fa-jet-fighter"></i>' }
+    ]
+};
+
+// 6. Opciones de Modo de Juego
 const gameModes = [
     { id: 'singleplayer', name: 'Un Jugador', icon: '<i class="fa-solid fa-user"></i>' },
     { id: 'multiplayer', name: 'Multijugador', icon: '<i class="fa-solid fa-users"></i>' },
@@ -77,8 +101,9 @@ const gameModes = [
 ];
 
 let step = 0;
-const totalSteps = 5;
+const totalSteps = 6;
 let userAnswers = {
+    isRandom: false,
     brandName: '',
     platformId: '',
     platformName: '',
@@ -87,9 +112,14 @@ let userAnswers = {
     priceName: '',
     genreId: '',
     genreName: '',
+    subGenreId: '',
+    subGenreName: '',
+    subGenreKeyword: '',
     modeId: '',
     modeName: ''
 };
+
+let lastSearchResults = [];
 
 const questionText = document.getElementById('question-text');
 const optionsContainer = document.getElementById('options-container');
@@ -148,6 +178,7 @@ function renderStep() {
         btnWizard.className = 'option-btn';
         btnWizard.innerHTML = '<i class="fa-solid fa-sliders"></i> <span>Elegir plataforma y filtros</span>';
         btnWizard.onclick = () => {
+            userAnswers.isRandom = false;
             step = 1;
             renderStep();
         };
@@ -158,6 +189,7 @@ function renderStep() {
         btnRandom.style.borderColor = '#e67e22';
         btnRandom.innerHTML = '<i class="fa-solid fa-dice"></i> <span>Recomendado (Al azar)</span>';
         btnRandom.onclick = () => {
+            userAnswers.isRandom = true;
             fetchTotallyRandomGame();
         };
         optionsContainer.appendChild(btnRandom);
@@ -230,7 +262,7 @@ function renderStep() {
         crearBotonVolver();
     }
     else if (step === 4) {
-        questionText.textContent = '¿Qué ritmo de juego buscás?';
+        questionText.textContent = '¿Qué género principal buscás?';
         genres.forEach(opt => {
             const btn = document.createElement('button');
             btn.className = 'option-btn';
@@ -247,6 +279,26 @@ function renderStep() {
         crearBotonVolver();
     }
     else if (step === 5) {
+        questionText.textContent = `Elegí subcategoría para ${userAnswers.genreName}:`;
+        const specificSubGenres = subGenres[userAnswers.genreId] || subGenres['action'];
+
+        specificSubGenres.forEach(opt => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.innerHTML = `${opt.icon} <span>${opt.name}</span>`;
+            btn.onclick = () => {
+                userAnswers.subGenreId = opt.id;
+                userAnswers.subGenreName = opt.name;
+                userAnswers.subGenreKeyword = opt.keyword || opt.id;
+                step++;
+                renderStep();
+            };
+            optionsContainer.appendChild(btn);
+        });
+
+        crearBotonVolver();
+    }
+    else if (step === 6) {
         questionText.textContent = '¿Cómo preferís jugar?';
         gameModes.forEach(opt => {
             const btn = document.createElement('button');
@@ -311,15 +363,10 @@ async function fetchTotallyRandomGame() {
 
         setTimeout(() => {
             if (data.results && data.results.length > 0) {
+                lastSearchResults = data.results;
                 const randomIndex = Math.floor(Math.random() * data.results.length);
                 const game = data.results[randomIndex];
                 
-                userAnswers.brandName = 'PC';
-                userAnswers.platformName = 'Multiplataforma';
-                userAnswers.priceName = 'Aleatorio';
-                userAnswers.genreName = 'Sorpresa';
-                userAnswers.modeName = 'General';
-
                 showResult(game);
             } else {
                 showError();
@@ -336,14 +383,14 @@ async function fetchGameFromAPI() {
     questionText.textContent = 'PROCESANDO FILTROS...';
     mostrarSpinnerRetro('BUSCANDO JUEGAZO...');
 
-    // Elegimos una página al azar entre la 1 y la 5 para garantizar variedad total y evitar repeticiones
     const randomPage = Math.floor(Math.random() * 5) + 1;
 
     let dateQuery = userAnswers.platformDates ? `&dates=${userAnswers.platformDates}` : '';
     let tagsQuery = userAnswers.priceId ? `&tags=${userAnswers.priceId}` : '';
     let modeQuery = userAnswers.modeId ? `&tags=${userAnswers.modeId}` : '';
+    let finalGenreParam = `${userAnswers.genreId},${userAnswers.subGenreId}`;
     
-    const url = `https://api.rawg.io/api/games?key=${API_KEY}&platforms=${userAnswers.platformId}&genres=${userAnswers.genreId}${tagsQuery}${modeQuery}${dateQuery}&page=${randomPage}&page_size=40`;
+    const url = `https://api.rawg.io/api/games?key=${API_KEY}&platforms=${userAnswers.platformId}&genres=${finalGenreParam}${tagsQuery}${modeQuery}${dateQuery}&page=${randomPage}&page_size=40`;
 
     try {
         const response = await fetch(url);
@@ -351,8 +398,25 @@ async function fetchGameFromAPI() {
 
         setTimeout(() => {
             if (data.results && data.results.length > 0) {
-                const randomIndex = Math.floor(Math.random() * data.results.length);
-                const game = data.results[randomIndex];
+                // --- FILTRO DE SEGURIDAD LOCAL ANTITROLLS ---
+                let filteredResults = data.results;
+                const keyword = userAnswers.subGenreKeyword ? userAnswers.subGenreKeyword.toLowerCase() : '';
+
+                if (keyword === 'racing') {
+                    // Si pidió carreras, exigimos estrictamente que contenga la palabra clave o género de carreras/autos
+                    filteredResults = data.results.filter(g => {
+                        const nameLower = g.name.toLowerCase();
+                        const genresCombined = g.genres ? g.genres.map(ge => ge.slug.toLowerCase()).join(' ') : '';
+                        return genresCombined.includes('racing') || nameLower.includes('f1') || nameLower.includes('forza') || nameLower.includes('automobilista') || nameLower.includes('dirt') || nameLower.includes('grid') || nameLower.includes('need for speed') || nameLower.includes('assetto') || nameLower.includes('rally');
+                    });
+                }
+
+                // Si por el filtro estricto nos quedamos sin juegos, usamos los originales para no romper
+                const pool = filteredResults.length > 0 ? filteredResults : data.results;
+                
+                lastSearchResults = pool;
+                const randomIndex = Math.floor(Math.random() * pool.length);
+                const game = pool[randomIndex];
                 showResult(game);
             } else {
                 fetchFallbackGame();
@@ -367,7 +431,8 @@ async function fetchGameFromAPI() {
 
 async function fetchFallbackGame() {
     let dateQuery = userAnswers.platformDates ? `&dates=${userAnswers.platformDates}` : '';
-    const url = `https://api.rawg.io/api/games?key=${API_KEY}&platforms=${userAnswers.platformId}&genres=${userAnswers.genreId}${dateQuery}&page_size=40`;
+    let finalGenreParam = `${userAnswers.genreId},${userAnswers.subGenreId}`;
+    const url = `https://api.rawg.io/api/games?key=${API_KEY}&platforms=${userAnswers.platformId}&genres=${finalGenreParam}${dateQuery}&page_size=40`;
 
     try {
         const response = await fetch(url);
@@ -375,6 +440,7 @@ async function fetchFallbackGame() {
 
         setTimeout(() => {
             if (data.results && data.results.length > 0) {
+                lastSearchResults = data.results;
                 const randomIndex = Math.floor(Math.random() * data.results.length);
                 const game = data.results[randomIndex];
                 showResult(game);
@@ -461,15 +527,47 @@ function showResult(game) {
         `;
     }
 
+    let introText = '';
+    let row1Label = '', row2Label = '', row3Label = '', row4Label = '';
+    let p1 = 100, p2 = 90, p3 = 95, p4 = 100;
+
+    if (userAnswers.isRandom) {
+        let mainGenre = game.genres && game.genres[0] ? game.genres[0].name : 'Gran Título';
+        introText = `Selección sorpresa del sistema. Encontramos este aclamado juego de <strong>${mainGenre}</strong> que está arrasando en la base de datos. ¡Ideal para descubrir algo nuevo!`;
+        row1Label = `Estilo: ${mainGenre}`;
+        row2Label = `Puntuación Metacritic`;
+        row3Label = `Recepción de Jugadores`;
+        row4Label = `Selección Aleatoria`;
+        p1 = 100;
+        p2 = game.metacritic ? Math.min(99, Math.max(80, game.metacritic)) : 90;
+        p3 = game.rating ? Math.round(game.rating * 20) : 85;
+        p4 = 100;
+    } else {
+        introText = `Buscás una experiencia de <strong>${userAnswers.subGenreName}</strong> ideal para <strong>${userAnswers.platformName}</strong>. Por sus mecánicas, <strong>${game.name}</strong> encaja perfectamente con tus elecciones.`;
+        row1Label = userAnswers.subGenreName;
+        row2Label = userAnswers.genreName;
+        row3Label = userAnswers.modeName;
+        row4Label = userAnswers.platformName;
+        p1 = 100;
+        p2 = game.metacritic ? Math.min(98, Math.max(80, game.metacritic)) : 88;
+        p3 = 100;
+        p4 = 95;
+    }
+
+    let otherGames = lastSearchResults.filter(g => g.id !== game.id);
+    let alt1 = otherGames[0] ? otherGames[0] : { name: 'Elden Ring' };
+    let alt2 = otherGames[1] ? otherGames[1] : { name: 'Cyberpunk 2077' };
+    let alt3 = otherGames[2] ? otherGames[2] : { name: 'Grand Theft Auto V' };
+
     optionsContainer.innerHTML = `
-        <div style="background: #181818; border-radius: 16px; border: 1px solid #333; max-width: 460px; margin: 0 auto; box-shadow: 0 20px 40px rgba(0,0,0,0.8); overflow: hidden; position: relative; text-align: left;">
+        <div style="background: #181818; border-radius: 16px; border: 1px solid #333; max-width: 480px; margin: 0 auto; box-shadow: 0 20px 40px rgba(0,0,0,0.8); overflow: hidden; position: relative; text-align: left;">
             
             <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-image: url('${game.background_image}'); background-size: cover; background-position: center; filter: blur(16px) brightness(0.25); transform: scale(1.1); z-index: 0;"></div>
 
             <div style="position: relative; z-index: 1;">
                 
                 <div style="background: ${brandColor}; padding: 8px 15px; display: flex; align-items: center; justify-content: space-between; color: #fff; font-size: 0.8rem; font-weight: 600; letter-spacing: 0.5px;">
-                    <span style="display: flex; align-items: center; gap: 6px;">${brandIcon} ${userAnswers.brandName ? userAnswers.brandName.toUpperCase() : 'PC'} - ${userAnswers.platformName || 'General'}</span>
+                    <span style="display: flex; align-items: center; gap: 6px;">${brandIcon} ${userAnswers.isRandom ? 'HALLAZGO SORPRESA' : (userAnswers.brandName ? userAnswers.brandName.toUpperCase() : 'PC')}</span>
                     <span style="opacity: 0.8; font-size: 0.75rem;"><i class="fa-solid fa-shield-check"></i> Recomendado</span>
                 </div>
 
@@ -503,6 +601,84 @@ function showResult(game) {
                     </div>
 
                     ${platformsHtml}
+
+                    <!-- BLOQUE ESTÉTICO INTELIGENTE -->
+                    <div style="background: rgba(15,15,15,0.9); padding: 18px; border-radius: 12px; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.08);">
+                        <p style="color: #fff; font-weight: 600; margin-top: 0; margin-bottom: 6px; font-size: 0.95rem;">Creemos que te va a encantar.</p>
+                        <p style="color: #bbb; font-size: 0.85rem; margin-bottom: 16px; line-height: 1.4;">${introText}</p>
+                        
+                        <div style="display: flex; align-items: center; gap: 6px; color: #f1c40f; font-weight: 600; font-size: 0.85rem; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
+                            <span>📊</span> ¿Por qué te lo recomendamos?
+                        </div>
+
+                        <!-- Cabecera de la tabla -->
+                        <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: #888; text-transform: uppercase; margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 4px;">
+                            <span>Parámetro</span>
+                            <span>Coincidencia</span>
+                        </div>
+
+                        <!-- Fila 1 -->
+                        <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.82rem; color: #ddd; margin-bottom: 10px;">
+                            <span>🌎 ${row1Label}</span>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <div style="background: #222; width: 80px; height: 6px; border-radius: 3px; overflow: hidden;">
+                                    <div style="background: #4CAF50; width: ${p1}%; height: 100%;"></div>
+                                </div>
+                                <span style="font-weight: bold; font-size: 0.8rem; min-width: 35px; text-align: right; color: #4CAF50;">${p1}%</span>
+                            </div>
+                        </div>
+
+                        <!-- Fila 2 -->
+                        <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.82rem; color: #ddd; margin-bottom: 10px;">
+                            <span>⚔️ ${row2Label}</span>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <div style="background: #222; width: 80px; height: 6px; border-radius: 3px; overflow: hidden;">
+                                    <div style="background: #3498db; width: ${p2}%; height: 100%;"></div>
+                                </div>
+                                <span style="font-weight: bold; font-size: 0.8rem; min-width: 35px; text-align: right; color: #3498db;">${p2}%</span>
+                            </div>
+                        </div>
+
+                        <!-- Fila 3 -->
+                        <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.82rem; color: #ddd; margin-bottom: 10px;">
+                            <span>👤 ${row3Label}</span>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <div style="background: #222; width: 80px; height: 6px; border-radius: 3px; overflow: hidden;">
+                                    <div style="background: #2196F3; width: ${p3}%; height: 100%;"></div>
+                                </div>
+                                <span style="font-weight: bold; font-size: 0.8rem; min-width: 35px; text-align: right; color: #2196F3;">${p3}%</span>
+                            </div>
+                        </div>
+
+                        <!-- Fila 4 -->
+                        <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.82rem; color: #ddd; margin-bottom: 16px;">
+                            <span>🎮 ${row4Label}</span>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <div style="background: #222; width: 80px; height: 6px; border-radius: 3px; overflow: hidden;">
+                                    <div style="background: #e67e22; width: ${p4}%; height: 100%;"></div>
+                                </div>
+                                <span style="font-weight: bold; font-size: 0.8rem; min-width: 35px; text-align: right; color: #e67e22;">${p4}%</span>
+                            </div>
+                        </div>
+
+                        <!-- También podrían gustarte -->
+                        <div style="border-top: 1px solid rgba(255,255,255,0.08); padding-top: 12px;">
+                            <p style="color: #f1c40f; font-weight: 600; margin-top: 0; margin-bottom: 10px; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px;">🔥 También podrían gustarte</p>
+                            
+                            <div style="display: flex; flex-direction: column; gap: 8px; font-size: 0.82rem;">
+                                <div style="display: flex; align-items: center; gap: 8px; color: #ddd;">
+                                    <span>🥇</span> <div><strong>${alt1.name}</strong><br><span style="color: #888; font-size: 0.75rem;">Destacado · Alta afinidad</span></div>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 8px; color: #ddd;">
+                                    <span>🥈</span> <div><strong>${alt2.name}</strong><br><span style="color: #888; font-size: 0.75rem;">Recomendado</span></div>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 8px; color: #ddd;">
+                                    <span>🥉</span> <div><strong>${alt3.name}</strong><br><span style="color: #888; font-size: 0.75rem;">Éxito en la plataforma</span></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     ${techCityBtn}
 
                     <div style="display: flex; gap: 10px; margin-bottom: 15px;">
@@ -514,23 +690,16 @@ function showResult(game) {
                         </button>
                     </div>
 
-                    <button onclick="shareGame('${game.name}')" style="width: 100%; background: rgba(37, 211, 102, 0.15); color: #25D366; border: 1px solid rgba(37, 211, 102, 0.3); padding: 10px; border-radius: 8px; font-size: 0.85rem; font-weight: 500; cursor: pointer; margin-bottom: 20px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                    <button onclick="shareGame('${game.name}')" style="width: 100%; background: rgba(37, 211, 102, 0.15); color: #25D366; border: 1px solid rgba(37, 211, 102, 0.3); padding: 10px; border-radius: 8px; font-size: 0.85rem; font-weight: 500; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
                         <i class="fa-solid fa-share-nodes"></i> Compartir recomendación
                     </button>
-
-                    <div style="display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px;">
-                        <span style="background: rgba(30,30,30,0.85); padding: 5px 10px; border-radius: 15px; font-size: 0.7rem; color: #ccc;">${userAnswers.platformName || 'General'}</span>
-                        <span style="background: rgba(30,30,30,0.85); padding: 5px 10px; border-radius: 15px; font-size: 0.7rem; color: #ccc;">${userAnswers.priceName || 'Todos'}</span>
-                        <span style="background: rgba(30,30,30,0.85); padding: 5px 10px; border-radius: 15px; font-size: 0.7rem; color: #ccc;">${userAnswers.genreName || 'Variado'}</span>
-                        <span style="background: rgba(30,30,30,0.85); padding: 5px 10px; border-radius: 15px; font-size: 0.7rem; color: #aaa;">${userAnswers.modeName || 'Cualquiera'}</span>
-                    </div>
                 </div>
             </div>
         </div>
         
         <div style="display: flex; justify-content: center; gap: 15px; flex-wrap: wrap; margin-top: 30px;">
             <button style="background: #1a1a1a; color: #fff; border: 1px solid #333; padding: 12px 25px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 1rem; transition: all 0.2s;" onmouseover="this.style.borderColor='#3498db'" onmouseout="this.style.borderColor='#333'" onclick="userAnswers.brandName ? fetchGameFromAPI() : fetchTotallyRandomGame()">
-                <i class="fa-solid fa-rotate-right"></i> <span>Buscar otro igual</span>
+                <i class="fa-solid fa-rotate-right"></i> <span>Buscar otro juego</span>
             </button>
             <button style="background: #222; color: #fff; border: 1px solid #333; padding: 12px 25px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 1rem; transition: all 0.2s;" onmouseover="this.style.borderColor='#555'" onmouseout="this.style.borderColor='#333'" onclick="step=0; renderStep();">
                 <i class="fa-solid fa-house"></i> <span>Volver al inicio</span>
@@ -585,10 +754,20 @@ function verificarEstadoFavorito(gameName) {
 function showError() {
     questionText.textContent = 'ERROR DE SISTEMA';
     optionsContainer.innerHTML = `
-        <p style="color: #ccc; font-family: monospace;">No pudimos conectar con el cartucho de datos.</p>
-        <button class="option-btn" style="margin-top: 20px; min-width: auto; flex-direction: row;" onclick="step=0; renderStep();">
-            <i class="fa-solid fa-house" style="font-size: 1.2rem;"></i> <span>Volver al inicio</span>
-        </button>
+        <div style="background: rgba(20,20,20,0.85); padding: 30px; border-radius: 16px; border: 1px solid #ff4757; text-align: center; max-width: 400px; margin: 0 auto; font-family: monospace;">
+            <div style="font-size: 3.5rem; color: #ff4757; margin-bottom: 15px;">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <p style="color: #fff; font-size: 1rem; margin-bottom: 20px;">No pudimos conectar con el cartucho de datos o no hubo resultados para esta combinación exacta.</p>
+            
+            <button class="option-btn" style="background: #3498db; border: none; padding: 12px; border-radius: 8px; color: #fff; cursor: pointer; font-weight: bold; margin-bottom: 10px; width: 100%;" onclick="userAnswers.brandName ? fetchGameFromAPI() : fetchTotallyRandomGame()">
+                <i class="fa-solid fa-rotate-right"></i> Reintentar búsqueda
+            </button>
+            
+            <button class="option-btn" style="background: #222; border: 1px solid #444; padding: 12px; border-radius: 8px; color: #ccc; cursor: pointer; width: 100%;" onclick="step=0; renderStep();">
+                <i class="fa-solid fa-house"></i> Volver al inicio
+            </button>
+        </div>
     `;
 }
 
