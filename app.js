@@ -1,12 +1,15 @@
 const API_KEY = 'b7fb0c8c04464d2db1b82a2c07e068ff';
 
-// Colocá aquí los nombres de las imágenes que descargaste en tu carpeta (ej: 'fondo1.jpg', 'fondo2.jpg')
+// Colocá aquí los nombres de las imágenes que descargaste en tu carpeta
 const epicBackgrounds = [
     'fondo1.jpg',
     'fondo2.jpg',
     'fondo3.jpg',
     'fondo4.jpg'
 ];
+
+// IDs de consolas retro (No aplica F2P ni Metacritic)
+const retroPlatforms = ['15', '27', '80', '105', '83', '79', '49'];
 
 // 1. Opciones principales de Plataforma
 const platforms = [
@@ -17,7 +20,7 @@ const platforms = [
     { id: 'Móvil', name: 'Móvil', icon: '<i class="fa-solid fa-mobile-screen"></i>' }
 ];
 
-// 2. Sub-opciones completas con rangos de fechas
+// 2. Sub-opciones completas
 const subPlatforms = {
     'PC': [
         { id: '4', name: 'Gama Alta', icon: '<i class="fa-solid fa-desktop"></i>', dates: '2018-01-01,2026-12-31' },
@@ -54,7 +57,7 @@ const subPlatforms = {
     ]
 };
 
-// 3. Opciones de Presupuesto / Tipo de Juego
+// 3. Opciones de Presupuesto
 const priceRanges = [
     { id: 'free-to-play', name: 'Gratis (Free-to-Play)', icon: '<i class="fa-solid fa-gift"></i>', tag: 'free-to-play' },
     { id: 'indie', name: 'Económicos / Indie', icon: '<i class="fa-solid fa-tag"></i>', tag: 'indie' },
@@ -69,7 +72,7 @@ const genres = [
     { id: 'shooter', name: 'Shooter', icon: '<i class="fa-solid fa-crosshairs"></i>' }
 ];
 
-// Subcategorías específicas para cada género principal
+// Subcategorías
 const subGenres = {
     'action': [
         { id: 'action', name: 'Acción Aventura', icon: '<i class="fa-solid fa-compass"></i>' },
@@ -100,8 +103,14 @@ const gameModes = [
     { id: 'co-op', name: 'Cooperativo', icon: '<i class="fa-solid fa-handshake"></i>' }
 ];
 
+// 7. Opciones de Puntuación
+const scorePreferences = [
+    { id: 'high', name: 'Me importa el puntaje (+80)', icon: '<i class="fa-solid fa-trophy"></i>', scores: '80,100' },
+    { id: 'any', name: 'Quiero conocer de todo', icon: '<i class="fa-solid fa-gem"></i>', scores: '' }
+];
+
 let step = 0;
-const totalSteps = 6;
+const totalSteps = 7; 
 let userAnswers = {
     isRandom: false,
     brandName: '',
@@ -116,7 +125,9 @@ let userAnswers = {
     subGenreName: '',
     subGenreKeyword: '',
     modeId: '',
-    modeName: ''
+    modeName: '',
+    scoreRange: '',
+    scoreName: ''
 };
 
 let lastSearchResults = [];
@@ -124,7 +135,7 @@ let lastSearchResults = [];
 const questionText = document.getElementById('question-text');
 const optionsContainer = document.getElementById('options-container');
 
-// Creamos un elemento dinámico en el body para manejar el fondo épico
+// Manejo del fondo dinámico
 let epicBgElement = document.createElement('div');
 epicBgElement.className = 'epic-bg';
 document.body.prepend(epicBgElement);
@@ -143,7 +154,7 @@ function updateEpicBackground(customImage = null) {
     }
 }
 
-// Spinner retro con animación y diseño incorporado
+// Spinner retro
 function mostrarSpinnerRetro(mensaje = 'CARGANDO CARTUCHO...') {
     optionsContainer.innerHTML = `
         <div style="text-align: center; padding: 40px; font-family: 'Courier New', Courier, monospace;">
@@ -196,7 +207,6 @@ function renderStep() {
         return;
     }
 
-    // Barra de Progreso Superior
     let progressHtml = `
         <div class="progress-wrapper">
             <span>Paso ${step} de ${totalSteps}</span>
@@ -236,7 +246,15 @@ function renderStep() {
                 userAnswers.platformId = opt.id;
                 userAnswers.platformName = opt.name;
                 userAnswers.platformDates = opt.dates || '';
-                step++;
+                
+                // INTELIGENCIA: Si es consola retro, salta la pregunta del presupuesto/F2P
+                if (retroPlatforms.includes(userAnswers.platformId)) {
+                    userAnswers.priceId = '';
+                    userAnswers.priceName = 'Clásico Retro';
+                    step = 4; // Salta al Género
+                } else {
+                    step = 3;
+                }
                 renderStep();
             };
             optionsContainer.appendChild(btn);
@@ -246,7 +264,11 @@ function renderStep() {
     }
     else if (step === 3) {
         questionText.textContent = '¿Qué presupuesto o tipo buscás?';
-        priceRanges.forEach(opt => {
+        
+        // INTELIGENCIA: Si es Móvil, ocultamos "AAA" porque no tiene sentido.
+        const filteredPrices = userAnswers.brandName === 'Móvil' ? priceRanges.filter(p => p.id !== 'aaa') : priceRanges;
+        
+        filteredPrices.forEach(opt => {
             const btn = document.createElement('button');
             btn.className = 'option-btn';
             btn.innerHTML = `${opt.icon} <span>${opt.name}</span>`;
@@ -307,6 +329,31 @@ function renderStep() {
             btn.onclick = () => {
                 userAnswers.modeId = opt.id;
                 userAnswers.modeName = opt.name;
+                
+                // INTELIGENCIA: Si es Retro o F2P, salteamos la pregunta de Metacritic porque falla.
+                if (retroPlatforms.includes(userAnswers.platformId) || userAnswers.priceId === 'free-to-play') {
+                    userAnswers.scoreRange = '';
+                    userAnswers.scoreName = 'Cualquiera';
+                    fetchGameFromAPI();
+                } else {
+                    step++;
+                    renderStep(); 
+                }
+            };
+            optionsContainer.appendChild(btn);
+        });
+
+        crearBotonVolver();
+    }
+    else if (step === 7) {
+        questionText.textContent = '¿Te importa la calificación de la crítica?';
+        scorePreferences.forEach(opt => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.innerHTML = `${opt.icon} <span>${opt.name}</span>`;
+            btn.onclick = () => {
+                userAnswers.scoreRange = opt.scores;
+                userAnswers.scoreName = opt.name;
                 fetchGameFromAPI(); 
             };
             optionsContainer.appendChild(btn);
@@ -326,7 +373,12 @@ function crearBotonVolver() {
     backBtn.style.flexDirection = 'row';
     
     backBtn.onclick = () => {
-        step--; 
+        // Lógica de "Volver" inteligente respetando los saltos
+        if (step === 4 && retroPlatforms.includes(userAnswers.platformId)) {
+            step = 2; // Si es retro, el paso anterior a Género es Consola
+        } else {
+            step--; 
+        }
         renderStep(); 
     };
     
@@ -350,6 +402,15 @@ function crearBotonInicio() {
     optionsContainer.appendChild(homeBtn);
 }
 
+// Función auxiliar para cargar alternativas dinámicas
+window.loadGameFromCache = function(gameId) {
+    const game = lastSearchResults.find(g => g.id === gameId);
+    if (game) {
+        showResult(game);
+        window.scrollTo({ top: 0, behavior: 'smooth' }); 
+    }
+};
+
 async function fetchTotallyRandomGame() {
     questionText.textContent = 'SYSTEM BOOT...';
     mostrarSpinnerRetro('LEYENDO DATOS DE RAWG...');
@@ -366,7 +427,6 @@ async function fetchTotallyRandomGame() {
                 lastSearchResults = data.results;
                 const randomIndex = Math.floor(Math.random() * data.results.length);
                 const game = data.results[randomIndex];
-                
                 showResult(game);
             } else {
                 showError();
@@ -374,7 +434,6 @@ async function fetchTotallyRandomGame() {
         }, 1000);
 
     } catch (error) {
-        console.error("Error:", error);
         showError();
     }
 }
@@ -388,9 +447,10 @@ async function fetchGameFromAPI() {
     let dateQuery = userAnswers.platformDates ? `&dates=${userAnswers.platformDates}` : '';
     let tagsQuery = userAnswers.priceId ? `&tags=${userAnswers.priceId}` : '';
     let modeQuery = userAnswers.modeId ? `&tags=${userAnswers.modeId}` : '';
+    let scoreQuery = userAnswers.scoreRange ? `&metacritic=${userAnswers.scoreRange}` : '';
     let finalGenreParam = `${userAnswers.genreId},${userAnswers.subGenreId}`;
     
-    const url = `https://api.rawg.io/api/games?key=${API_KEY}&platforms=${userAnswers.platformId}&genres=${finalGenreParam}${tagsQuery}${modeQuery}${dateQuery}&page=${randomPage}&page_size=40`;
+    const url = `https://api.rawg.io/api/games?key=${API_KEY}&platforms=${userAnswers.platformId}&genres=${finalGenreParam}${tagsQuery}${modeQuery}${scoreQuery}${dateQuery}&page=${randomPage}&page_size=40`;
 
     try {
         const response = await fetch(url);
@@ -398,12 +458,11 @@ async function fetchGameFromAPI() {
 
         setTimeout(() => {
             if (data.results && data.results.length > 0) {
-                // --- FILTRO DE SEGURIDAD LOCAL ANTITROLLS ---
                 let filteredResults = data.results;
+                
+                // Filtro Local: Carreras
                 const keyword = userAnswers.subGenreKeyword ? userAnswers.subGenreKeyword.toLowerCase() : '';
-
                 if (keyword === 'racing') {
-                    // Si pidió carreras, exigimos estrictamente que contenga la palabra clave o género de carreras/autos
                     filteredResults = data.results.filter(g => {
                         const nameLower = g.name.toLowerCase();
                         const genresCombined = g.genres ? g.genres.map(ge => ge.slug.toLowerCase()).join(' ') : '';
@@ -411,39 +470,83 @@ async function fetchGameFromAPI() {
                     });
                 }
 
-                // Si por el filtro estricto nos quedamos sin juegos, usamos los originales para no romper
-                const pool = filteredResults.length > 0 ? filteredResults : data.results;
-                
-                lastSearchResults = pool;
-                const randomIndex = Math.floor(Math.random() * pool.length);
-                const game = pool[randomIndex];
-                showResult(game);
+                // ESCUDO ANTI-GASTOS: Filtro Local Estricto para F2P
+                if (userAnswers.priceId === 'free-to-play') {
+                    filteredResults = filteredResults.filter(g => {
+                        const tagsCombined = g.tags ? g.tags.map(t => t.slug.toLowerCase()).join(' ') : '';
+                        return tagsCombined.includes('free-to-play');
+                    });
+                }
+
+                // Si por filtros de carreras/F2P se vacía la lista, no podemos usar juegos sucios si se pidió F2P
+                let pool = filteredResults;
+                if (pool.length === 0 && userAnswers.priceId !== 'free-to-play') {
+                    pool = data.results; // Rescate suave si no es plata
+                }
+
+                if (pool.length > 0) {
+                    lastSearchResults = pool;
+                    const randomIndex = Math.floor(Math.random() * pool.length);
+                    const game = pool[randomIndex];
+                    showResult(game);
+                } else {
+                    fetchFallbackGame(); // Vamos al rescate duro si no hay nada
+                }
             } else {
                 fetchFallbackGame();
             }
         }, 1000);
 
     } catch (error) {
-        console.error("Error:", error);
         showError();
     }
 }
 
 async function fetchFallbackGame() {
     let dateQuery = userAnswers.platformDates ? `&dates=${userAnswers.platformDates}` : '';
+    let scoreQuery = userAnswers.scoreRange ? `&metacritic=${userAnswers.scoreRange}` : '';
+    let tagsQuery = userAnswers.priceId ? `&tags=${userAnswers.priceId}` : ''; 
     let finalGenreParam = `${userAnswers.genreId},${userAnswers.subGenreId}`;
-    const url = `https://api.rawg.io/api/games?key=${API_KEY}&platforms=${userAnswers.platformId}&genres=${finalGenreParam}${dateQuery}&page_size=40`;
+    
+    // Rescate sin modo de juego para abrir el abanico
+    let url = `https://api.rawg.io/api/games?key=${API_KEY}&platforms=${userAnswers.platformId}&genres=${finalGenreParam}${tagsQuery}${scoreQuery}${dateQuery}&page_size=40`;
 
     try {
-        const response = await fetch(url);
-        const data = await response.json();
+        let response = await fetch(url);
+        let data = await response.json();
+
+        // RESCATE EXTREMO F2P: Si pidió Gratis y ni siquiera el fallback genérico encontró algo en ese género, buscamos cualquier F2P de la consola ignorando el género. ¡NUNCA debe devolver un juego pago!
+        if ((!data.results || data.results.length === 0) && userAnswers.priceId === 'free-to-play') {
+            const emergencyUrl = `https://api.rawg.io/api/games?key=${API_KEY}&platforms=${userAnswers.platformId}&tags=free-to-play&page_size=40`;
+            response = await fetch(emergencyUrl);
+            data = await response.json();
+        }
 
         setTimeout(() => {
             if (data.results && data.results.length > 0) {
-                lastSearchResults = data.results;
-                const randomIndex = Math.floor(Math.random() * data.results.length);
-                const game = data.results[randomIndex];
-                showResult(game);
+                let filteredResults = data.results;
+
+                // Doble chequeo F2P
+                if (userAnswers.priceId === 'free-to-play') {
+                    filteredResults = data.results.filter(g => {
+                        const tagsCombined = g.tags ? g.tags.map(t => t.slug.toLowerCase()).join(' ') : '';
+                        return tagsCombined.includes('free-to-play');
+                    });
+                }
+                
+                const pool = filteredResults.length > 0 ? filteredResults : data.results;
+                
+                // Chequeo final de seguridad antes de mostrar
+                const finalPool = userAnswers.priceId === 'free-to-play' ? pool.filter(g => g.tags && g.tags.some(t => t.slug === 'free-to-play')) : pool;
+
+                if (finalPool.length > 0) {
+                    lastSearchResults = finalPool;
+                    const randomIndex = Math.floor(Math.random() * finalPool.length);
+                    const game = finalPool[randomIndex];
+                    showResult(game);
+                } else {
+                    showError();
+                }
             } else {
                 showError();
             }
@@ -528,36 +631,69 @@ function showResult(game) {
     }
 
     let introText = '';
-    let row1Label = '', row2Label = '', row3Label = '', row4Label = '';
-    let p1 = 100, p2 = 90, p3 = 95, p4 = 100;
+    let row1Icon = '', row1Label = '', row2Icon = '', row2Label = '', row3Icon = '', row3Label = '', row4Icon = '', row4Label = '';
+    let p2 = 90, p3 = 95, p4 = 100;
+    
+    let playtimeValue = game.playtime ? game.playtime : 0;
+    let playtimeText = playtimeValue > 0 ? `~${playtimeValue} hrs` : 'Variable';
+    let p1Width = playtimeValue > 0 ? Math.min(100, (playtimeValue / 40) * 100) : 50; 
+
+    // Puntaje Combinado
+    let metaScore = game.metacritic ? game.metacritic : 80;
+    let userScore = game.rating ? (game.rating * 20) : 80;
+    let combinedScore = Math.round((metaScore + userScore) / 2);
 
     if (userAnswers.isRandom) {
         let mainGenre = game.genres && game.genres[0] ? game.genres[0].name : 'Gran Título';
         introText = `Selección sorpresa del sistema. Encontramos este aclamado juego de <strong>${mainGenre}</strong> que está arrasando en la base de datos. ¡Ideal para descubrir algo nuevo!`;
-        row1Label = `Estilo: ${mainGenre}`;
-        row2Label = `Puntuación Metacritic`;
-        row3Label = `Recepción de Jugadores`;
-        row4Label = `Selección Aleatoria`;
-        p1 = 100;
-        p2 = game.metacritic ? Math.min(99, Math.max(80, game.metacritic)) : 90;
-        p3 = game.rating ? Math.round(game.rating * 20) : 85;
-        p4 = 100;
+        
+        row1Icon = '⏱️'; row1Label = `Duración Estimada`;
+        row2Icon = '🧠'; row2Label = `Complejidad / Desafío`;
+        row3Icon = '⚙️'; row3Label = `Optimización al Hardware`;
+        row4Icon = '🏆'; row4Label = `Aprobación Global`;
+        
+        p2 = game.metacritic ? Math.min(99, Math.max(75, game.metacritic)) : 80;
+        p3 = 90;
+        p4 = combinedScore;
     } else {
-        introText = `Buscás una experiencia de <strong>${userAnswers.subGenreName}</strong> ideal para <strong>${userAnswers.platformName}</strong>. Por sus mecánicas, <strong>${game.name}</strong> encaja perfectamente con tus elecciones.`;
-        row1Label = userAnswers.subGenreName;
-        row2Label = userAnswers.genreName;
-        row3Label = userAnswers.modeName;
-        row4Label = userAnswers.platformName;
-        p1 = 100;
-        p2 = game.metacritic ? Math.min(98, Math.max(80, game.metacritic)) : 88;
-        p3 = 100;
-        p4 = 95;
+        introText = `Buscás una experiencia de <strong>${userAnswers.subGenreName || userAnswers.genreName}</strong> ideal para <strong>${userAnswers.platformName}</strong>. Por su perfil técnico y mecánicas, <strong>${game.name}</strong> encaja perfectamente con tus exigencias.`;
+        
+        row1Icon = '⏱️'; row1Label = `Duración Estimada`;
+        row2Icon = '🧠'; row2Label = `Complejidad / Desafío`;
+        row3Icon = '⚙️'; row3Label = `Optimización al Hardware`;
+        row4Icon = '🏆'; row4Label = `Aprobación Global`;
+        
+        let isComplex = game.genres && game.genres.some(g => g.slug === 'strategy' || g.slug === 'role-playing-games' || g.slug === 'simulation');
+        p2 = isComplex ? (Math.floor(Math.random() * 10) + 90) : (Math.floor(Math.random() * 15) + 75); 
+        
+        p3 = (userAnswers.platformName.includes('Gama Alta') || userAnswers.brandName === 'PlayStation' || userAnswers.brandName === 'Xbox') ? 95 : 88;
+        
+        p4 = combinedScore;
     }
 
     let otherGames = lastSearchResults.filter(g => g.id !== game.id);
-    let alt1 = otherGames[0] ? otherGames[0] : { name: 'Elden Ring' };
-    let alt2 = otherGames[1] ? otherGames[1] : { name: 'Cyberpunk 2077' };
-    let alt3 = otherGames[2] ? otherGames[2] : { name: 'Grand Theft Auto V' };
+    
+    let alt1 = otherGames[0] || { id: 'fallback', name: 'Forza Horizon 5' };
+    let alt2 = otherGames[1] || { id: 'fallback', name: 'Cyberpunk 2077' };
+    let alt3 = otherGames[2] || { id: 'fallback', name: 'The Witcher 3: Wild Hunt' };
+
+    function getAltHtml(altObj, icon, subtitle) {
+        if (altObj.id === 'fallback') {
+            return `
+            <div style="display: flex; align-items: center; gap: 8px; color: #ddd; padding: 8px; border-radius: 8px;">
+                <span>${icon}</span> <div><strong>${altObj.name}</strong><br><span style="color: #888; font-size: 0.75rem;">${subtitle}</span></div>
+            </div>`;
+        } else {
+            return `
+            <div onclick="loadGameFromCache(${altObj.id})" style="display: flex; align-items: center; gap: 8px; color: #ddd; cursor: pointer; padding: 8px; border-radius: 8px; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='transparent'">
+                <span>${icon}</span> <div><strong>${altObj.name}</strong><br><span style="color: #888; font-size: 0.75rem;">${subtitle}</span></div>
+            </div>`;
+        }
+    }
+
+    let alt1Html = getAltHtml(alt1, '🥇', 'Destacado · Alta afinidad');
+    let alt2Html = getAltHtml(alt2, '🥈', 'Recomendado');
+    let alt3Html = getAltHtml(alt3, '🥉', 'Éxito en la plataforma');
 
     optionsContainer.innerHTML = `
         <div style="background: #181818; border-radius: 16px; border: 1px solid #333; max-width: 480px; margin: 0 auto; box-shadow: 0 20px 40px rgba(0,0,0,0.8); overflow: hidden; position: relative; text-align: left;">
@@ -589,6 +725,7 @@ function showResult(game) {
                         <div style="text-align: center; flex: 1;">
                             <div style="font-size: 2rem; font-weight: bold; color: #2196F3; line-height: 1;">${game.rating ? game.rating.toFixed(1) : '--'}</div>
                             <div style="font-size: 0.65rem; color: #aaa; text-transform: uppercase; margin-top: 6px; letter-spacing: 1px;">Jugadores</div>
+                            <div style="font-size: 0.55rem; color: #777; margin-top: 2px;">(RAWG)</div>
                         </div>
 
                         <div style="width: 1px; background: rgba(255,255,255,0.1); margin: 0 10px;"></div>
@@ -596,6 +733,7 @@ function showResult(game) {
                         <div style="text-align: center; flex: 1;">
                             <div style="font-size: 2rem; font-weight: bold; color: #E0E0E0; line-height: 1;">${votes}</div>
                             <div style="font-size: 0.65rem; color: #aaa; text-transform: uppercase; margin-top: 6px; letter-spacing: 1px;">Votos</div>
+                            <div style="font-size: 0.55rem; color: #777; margin-top: 2px;">(RAWG)</div>
                         </div>
 
                     </div>
@@ -608,73 +746,60 @@ function showResult(game) {
                         <p style="color: #bbb; font-size: 0.85rem; margin-bottom: 16px; line-height: 1.4;">${introText}</p>
                         
                         <div style="display: flex; align-items: center; gap: 6px; color: #f1c40f; font-weight: 600; font-size: 0.85rem; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
-                            <span>📊</span> ¿Por qué te lo recomendamos?
+                            <span>📊</span> PERFIL TÉCNICO
                         </div>
 
-                        <!-- Cabecera de la tabla -->
                         <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: #888; text-transform: uppercase; margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 4px;">
                             <span>Parámetro</span>
-                            <span>Coincidencia</span>
+                            <span>Valoración</span>
                         </div>
 
-                        <!-- Fila 1 -->
                         <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.82rem; color: #ddd; margin-bottom: 10px;">
-                            <span>🌎 ${row1Label}</span>
+                            <span>${row1Icon} ${row1Label}</span>
                             <div style="display: flex; align-items: center; gap: 8px;">
                                 <div style="background: #222; width: 80px; height: 6px; border-radius: 3px; overflow: hidden;">
-                                    <div style="background: #4CAF50; width: ${p1}%; height: 100%;"></div>
+                                    <div style="background: #4CAF50; width: ${p1Width}%; height: 100%;"></div>
                                 </div>
-                                <span style="font-weight: bold; font-size: 0.8rem; min-width: 35px; text-align: right; color: #4CAF50;">${p1}%</span>
+                                <span style="font-weight: bold; font-size: 0.8rem; min-width: 55px; text-align: right; color: #4CAF50;">${playtimeText}</span>
                             </div>
                         </div>
 
-                        <!-- Fila 2 -->
                         <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.82rem; color: #ddd; margin-bottom: 10px;">
-                            <span>⚔️ ${row2Label}</span>
+                            <span>${row2Icon} ${row2Label}</span>
                             <div style="display: flex; align-items: center; gap: 8px;">
                                 <div style="background: #222; width: 80px; height: 6px; border-radius: 3px; overflow: hidden;">
-                                    <div style="background: #3498db; width: ${p2}%; height: 100%;"></div>
+                                    <div style="background: #E040FB; width: ${p2}%; height: 100%;"></div>
                                 </div>
-                                <span style="font-weight: bold; font-size: 0.8rem; min-width: 35px; text-align: right; color: #3498db;">${p2}%</span>
+                                <span style="font-weight: bold; font-size: 0.8rem; min-width: 55px; text-align: right; color: #E040FB;">${p2}%</span>
                             </div>
                         </div>
 
-                        <!-- Fila 3 -->
                         <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.82rem; color: #ddd; margin-bottom: 10px;">
-                            <span>👤 ${row3Label}</span>
+                            <span>${row3Icon} ${row3Label}</span>
                             <div style="display: flex; align-items: center; gap: 8px;">
                                 <div style="background: #222; width: 80px; height: 6px; border-radius: 3px; overflow: hidden;">
-                                    <div style="background: #2196F3; width: ${p3}%; height: 100%;"></div>
+                                    <div style="background: #03A9F4; width: ${p3}%; height: 100%;"></div>
                                 </div>
-                                <span style="font-weight: bold; font-size: 0.8rem; min-width: 35px; text-align: right; color: #2196F3;">${p3}%</span>
+                                <span style="font-weight: bold; font-size: 0.8rem; min-width: 55px; text-align: right; color: #03A9F4;">${p3}%</span>
                             </div>
                         </div>
 
-                        <!-- Fila 4 -->
                         <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.82rem; color: #ddd; margin-bottom: 16px;">
-                            <span>🎮 ${row4Label}</span>
+                            <span>${row4Icon} ${row4Label}</span>
                             <div style="display: flex; align-items: center; gap: 8px;">
                                 <div style="background: #222; width: 80px; height: 6px; border-radius: 3px; overflow: hidden;">
-                                    <div style="background: #e67e22; width: ${p4}%; height: 100%;"></div>
+                                    <div style="background: #FF9800; width: ${p4}%; height: 100%;"></div>
                                 </div>
-                                <span style="font-weight: bold; font-size: 0.8rem; min-width: 35px; text-align: right; color: #e67e22;">${p4}%</span>
+                                <span style="font-weight: bold; font-size: 0.8rem; min-width: 55px; text-align: right; color: #FF9800;">${p4}%</span>
                             </div>
                         </div>
 
-                        <!-- También podrían gustarte -->
                         <div style="border-top: 1px solid rgba(255,255,255,0.08); padding-top: 12px;">
-                            <p style="color: #f1c40f; font-weight: 600; margin-top: 0; margin-bottom: 10px; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px;">🔥 También podrían gustarte</p>
-                            
-                            <div style="display: flex; flex-direction: column; gap: 8px; font-size: 0.82rem;">
-                                <div style="display: flex; align-items: center; gap: 8px; color: #ddd;">
-                                    <span>🥇</span> <div><strong>${alt1.name}</strong><br><span style="color: #888; font-size: 0.75rem;">Destacado · Alta afinidad</span></div>
-                                </div>
-                                <div style="display: flex; align-items: center; gap: 8px; color: #ddd;">
-                                    <span>🥈</span> <div><strong>${alt2.name}</strong><br><span style="color: #888; font-size: 0.75rem;">Recomendado</span></div>
-                                </div>
-                                <div style="display: flex; align-items: center; gap: 8px; color: #ddd;">
-                                    <span>🥉</span> <div><strong>${alt3.name}</strong><br><span style="color: #888; font-size: 0.75rem;">Éxito en la plataforma</span></div>
-                                </div>
+                            <p style="color: #f1c40f; font-weight: 600; margin-top: 0; margin-bottom: 5px; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px;">🔥 También podrían gustarte</p>
+                            <div style="display: flex; flex-direction: column; font-size: 0.82rem;">
+                                ${alt1Html}
+                                ${alt2Html}
+                                ${alt3Html}
                             </div>
                         </div>
                     </div>
