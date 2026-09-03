@@ -346,31 +346,46 @@ const verifiedRankingsData = {
 };
 
 window.loadVerifiedRanking = async function(categoryKey, titleText) {
-    questionText.textContent = 'CONSULTANDO REGISTROS...';
+    const cacheKey = `rawg_ranking_${categoryKey}`;
+    const cachedData = localStorage.getItem(cacheKey);
+
+    if (cachedData) {
+        lastSearchResults = JSON.parse(cachedData);
+        showVerifiedRankingsList(lastSearchResults, titleText);
+        return; 
+    }
+
+    questionText.textContent = 'CREANDO CACHÉ DE ÉLITE...';
     mostrarSpinnerRetro(titleText);
 
     let listToFetch = verifiedRankingsData[categoryKey];
-    let fetchedGames = [];
 
     try {
-        for (let item of listToFetch) {
-            let res = await fetch(`https://api.rawg.io/api/games?key=${API_KEY}&search=${encodeURIComponent(item.search)}&page_size=1`);
-            let data = await res.json();
-            if (data.results && data.results.length > 0) {
-                let game = data.results[0];
-                game.customSubtitle = item.subtitle;
-                fetchedGames.push(game);
-            }
-        }
+        const fetchPromises = listToFetch.map(item => 
+            fetch(`https://api.rawg.io/api/games?key=${API_KEY}&search=${encodeURIComponent(item.search)}&page_size=1`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.results && data.results.length > 0) {
+                        let game = data.results[0];
+                        game.customSubtitle = item.subtitle; 
+                        return game;
+                    }
+                    return null;
+                })
+        );
+
+        let fetchedGames = await Promise.all(fetchPromises);
+        fetchedGames = fetchedGames.filter(g => g !== null); 
 
         setTimeout(() => {
             if (fetchedGames.length > 0) {
                 lastSearchResults = fetchedGames;
+                localStorage.setItem(cacheKey, JSON.stringify(fetchedGames));
                 showVerifiedRankingsList(fetchedGames, titleText);
             } else {
                 showError();
             }
-        }, 800);
+        }, 500);
     } catch(e) {
         showError();
     }
@@ -566,7 +581,6 @@ function renderStep() {
     if (step === 0) {
         questionText.textContent = '¿Te ayudamos a encontrar tu próximo juego?';
         
-        // Estilos para el botón CTA GIGANTE
         const styleId = 'main-btn-style';
         if(!document.getElementById(styleId)) {
             const style = document.createElement('style');
@@ -614,7 +628,6 @@ function renderStep() {
 
         const topRowHtml = `
             <div style="display: flex; gap: 15px; margin-bottom: 25px; align-items: stretch; max-width: 480px; margin-left: auto; margin-right: auto;">
-                <!-- Buscador -->
                 <div style="flex: 1; background: rgba(20,20,20,0.85); padding: 16px; border-radius: 14px; border: 1px solid #3498db; box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: flex; flex-direction: column; justify-content: center;">
                     <p style="color: #3498db; font-weight: bold; margin-top: 0; margin-bottom: 10px; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px;"><i class="fa-solid fa-magnifying-glass"></i> Buscador Directo</p>
                     <div style="display: flex; gap: 8px; align-items: center;">
@@ -631,7 +644,6 @@ function renderStep() {
                     </div>
                 </div>
 
-                <!-- Botón RANKINGS (al costado) -->
                 <button onclick="openRankingsMenu()" title="Rankings" style="flex-shrink: 0; width: 85px; background: rgba(20,20,20,0.85); border: 1px solid #f1c40f; border-radius: 14px; color: #f1c40f; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); transition: all 0.2s;" onmouseover="this.style.background='rgba(241,196,15,0.1)'; this.style.transform='scale(1.05)'" onmouseout="this.style.background='rgba(20,20,20,0.85)'; this.style.transform='scale(1)'">
                     <i class="fa-solid fa-trophy" style="font-size: 1.8rem;"></i>
                     <span style="font-size: 0.7rem; font-weight: bold; text-transform: uppercase;">Rankings</span>
@@ -640,7 +652,6 @@ function renderStep() {
         `;
         optionsContainer.insertAdjacentHTML('beforeend', topRowHtml);
 
-        // Botón GIGANTE Principal
         const btnWizard = document.createElement('button');
         btnWizard.className = 'main-cta-btn';
         btnWizard.innerHTML = `
@@ -958,15 +969,18 @@ window.toggleLoreBox = async function(gameId) {
                 if (dataDetail.description_raw) {
                     let snippet = dataDetail.description_raw.substring(0, 400);
                     snippet = snippet.substr(0, Math.min(snippet.length, snippet.lastIndexOf(" "))) + '...';
+                    
                     try {
-                        const transRes = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(snippet)}&langpair=en|es`);
+                        const transRes = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=es&dt=t&q=${encodeURIComponent(snippet)}`);
                         const transData = await transRes.json();
-                        if (transData.responseData && transData.responseData.translatedText && !transData.responseData.translatedText.includes('MYMEMORY WARNING')) {
-                            loreText = transData.responseData.translatedText;
-                        } else {
-                            loreText = snippet;
-                        }
-                    } catch(e) { loreText = snippet; }
+                        let translatedText = '';
+                        transData[0].forEach(item => {
+                            if(item[0]) translatedText += item[0];
+                        });
+                        loreText = translatedText;
+                    } catch(e) { 
+                        loreText = snippet; 
+                    }
                 }
             } catch(e) { loreText = "No se pudo recuperar la descripción oficial de este universo."; }
 
@@ -1044,7 +1058,7 @@ function showMainGameResult() {
 
     let introText = '';
     let row1Icon = '', row1Label = '', row2Icon = '', row2Label = '', row3Icon = '', row3Label = '', row4Icon = '', row4Label = '';
-    let p2 = 90, p3 = 95, p4 = 100;
+    let p2 = 90, p4 = 100;
     
     let playtimeValue = game.playtime ? game.playtime : 0;
     let playtimeText = playtimeValue > 0 ? `~${playtimeValue} hrs` : 'Variable';
@@ -1057,15 +1071,32 @@ function showMainGameResult() {
     if (userAnswers.isRandom) {
         let mainGenre = game.genres && game.genres[0] ? game.genres[0].name : 'Gran Título';
         introText = `Selección sorpresa del sistema. Encontramos este aclamado juego de <strong>${mainGenre}</strong> que está arrasando en la base de datos. ¡Ideal para descubrir algo nuevo!`;
-        row1Icon = '⏱️'; row1Label = `Duración Estimada`; row2Icon = '🧠'; row2Label = `Complejidad / Desafío`; row3Icon = '⚙️'; row3Label = `Optimización al Hardware`; row4Icon = '🏆'; row4Label = `Aprobación Global`;
-        p2 = game.metacritic ? Math.min(99, Math.max(75, game.metacritic)) : 80; p3 = 90; p4 = combinedScore;
+        row1Icon = '⏱️'; row1Label = `Duración Estimada`; row2Icon = '🧠'; row2Label = `Complejidad / Desafío`; row3Icon = '⚙️'; row3Label = `Exigencia Tech`; row4Icon = '🏆'; row4Label = `Aprobación Global`;
+        p2 = game.metacritic ? Math.min(99, Math.max(75, game.metacritic)) : 80; p4 = combinedScore;
     } else {
         introText = `Buscás una experiencia de <strong>${userAnswers.subGenreName || userAnswers.genreName}</strong> ideal para <strong>${userAnswers.platformName}</strong>. Por su perfil técnico y mecánicas, <strong>${game.name}</strong> encaja perfectamente con tus exigencias.`;
-        row1Icon = '⏱️'; row1Label = `Duración Estimada`; row2Icon = '🧠'; row2Label = `Complejidad / Desafío`; row3Icon = '⚙️'; row3Label = `Optimización al Hardware`; row4Icon = '🏆'; row4Label = `Aprobación Global`;
+        row1Icon = '⏱️'; row1Label = `Duración Estimada`; row2Icon = '🧠'; row2Label = `Complejidad / Desafío`; row3Icon = '⚙️'; row3Label = `Exigencia Tech`; row4Icon = '🏆'; row4Label = `Aprobación Global`;
         let isComplex = game.genres && game.genres.some(g => g.slug === 'strategy' || g.slug === 'role-playing-games' || g.slug === 'simulation');
         p2 = isComplex ? (Math.floor(Math.random() * 10) + 90) : (Math.floor(Math.random() * 15) + 75); 
-        p3 = (userAnswers.platformName.includes('Gama Alta') || userAnswers.brandName === 'PlayStation' || userAnswers.brandName === 'Xbox') ? 95 : 88;
         p4 = combinedScore;
+    }
+
+    // LÓGICA DE EXIGENCIA AL HARDWARE
+    let releaseYearForOpt = game.released ? parseInt(game.released.split('-')[0]) : 2018;
+    let optText = 'Media Alta';
+    let p3Width = 75;
+
+    if (userAnswers.brandName === 'PC' && userAnswers.platformName) {
+        if (userAnswers.platformName.includes('Alta')) { optText = 'Alta'; p3Width = 100; }
+        else if (userAnswers.platformName.includes('Media')) { optText = 'Media Alta'; p3Width = 75; }
+        else if (userAnswers.platformName.includes('Baja')) { optText = 'Gama Baja'; p3Width = 25; }
+    } else if (retroPlatforms.includes(userAnswers.platformId)) {
+        optText = 'Gama Baja'; p3Width = 25;
+    } else {
+        if (releaseYearForOpt >= 2021) { optText = 'Alta'; p3Width = 100; }
+        else if (releaseYearForOpt >= 2016) { optText = 'Media Alta'; p3Width = 75; }
+        else if (releaseYearForOpt >= 2010) { optText = 'Media Baja'; p3Width = 50; }
+        else { optText = 'Gama Baja'; p3Width = 25; }
     }
 
     let ytQuery = encodeURIComponent(`${game.name} gameplay trailer español`);
@@ -1177,37 +1208,37 @@ function showMainGameResult() {
                         <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.82rem; color: #ddd; margin-bottom: 10px;">
                             <span>${row1Icon} ${row1Label}</span>
                             <div style="display: flex; align-items: center; gap: 8px;">
-                                <div style="background: #222; width: 80px; height: 6px; border-radius: 3px; overflow: hidden;">
+                                <div style="background: #222; width: 70px; height: 6px; border-radius: 3px; overflow: hidden;">
                                     <div style="background: #4CAF50; width: ${p1Width}%; height: 100%;"></div>
                                 </div>
-                                <span style="font-weight: bold; font-size: 0.8rem; min-width: 55px; text-align: right; color: #4CAF50;">${playtimeText}</span>
+                                <span style="font-weight: bold; font-size: 0.8rem; min-width: 65px; text-align: right; color: #4CAF50;">${playtimeText}</span>
                             </div>
                         </div>
                         <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.82rem; color: #ddd; margin-bottom: 10px;">
                             <span>${row2Icon} ${row2Label}</span>
                             <div style="display: flex; align-items: center; gap: 8px;">
-                                <div style="background: #222; width: 80px; height: 6px; border-radius: 3px; overflow: hidden;">
+                                <div style="background: #222; width: 70px; height: 6px; border-radius: 3px; overflow: hidden;">
                                     <div style="background: #E040FB; width: ${p2}%; height: 100%;"></div>
                                 </div>
-                                <span style="font-weight: bold; font-size: 0.8rem; min-width: 55px; text-align: right; color: #E040FB;">${p2}%</span>
+                                <span style="font-weight: bold; font-size: 0.8rem; min-width: 65px; text-align: right; color: #E040FB;">${p2}%</span>
                             </div>
                         </div>
                         <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.82rem; color: #ddd; margin-bottom: 10px;">
                             <span>${row3Icon} ${row3Label}</span>
                             <div style="display: flex; align-items: center; gap: 8px;">
-                                <div style="background: #222; width: 80px; height: 6px; border-radius: 3px; overflow: hidden;">
-                                    <div style="background: #03A9F4; width: ${p3}%; height: 100%;"></div>
+                                <div style="background: #222; width: 70px; height: 6px; border-radius: 3px; overflow: hidden;">
+                                    <div style="background: #03A9F4; width: ${p3Width}%; height: 100%;"></div>
                                 </div>
-                                <span style="font-weight: bold; font-size: 0.8rem; min-width: 55px; text-align: right; color: #03A9F4;">${p3}%</span>
+                                <span style="font-weight: bold; font-size: 0.75rem; min-width: 65px; text-align: right; color: #03A9F4;">${optText}</span>
                             </div>
                         </div>
                         <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.82rem; color: #ddd;">
                             <span>${row4Icon} ${row4Label}</span>
                             <div style="display: flex; align-items: center; gap: 8px;">
-                                <div style="background: #222; width: 80px; height: 6px; border-radius: 3px; overflow: hidden;">
+                                <div style="background: #222; width: 70px; height: 6px; border-radius: 3px; overflow: hidden;">
                                     <div style="background: #FF9800; width: ${p4}%; height: 100%;"></div>
                                 </div>
-                                <span style="font-weight: bold; font-size: 0.8rem; min-width: 55px; text-align: right; color: #FF9800;">${p4}%</span>
+                                <span style="font-weight: bold; font-size: 0.8rem; min-width: 65px; text-align: right; color: #FF9800;">${p4}%</span>
                             </div>
                         </div>
                     </div>
