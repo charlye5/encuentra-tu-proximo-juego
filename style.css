@@ -7,7 +7,7 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 100vh;
+    min-height: 100vh;
 }
 
 #app-container {
@@ -17,9 +17,16 @@ body {
 }
 
 h1 {
-    font-size: 2.5rem;
-    margin-bottom: 2.5rem;
+    font-size: 2rem;
+    margin-bottom: 2rem;
     font-weight: 300;
+}
+
+#options-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 15px;
 }
 
 .option-btn {
@@ -27,13 +34,11 @@ h1 {
     color: #ffffff;
     border: 1px solid #333333;
     padding: 20px 30px;
-    margin: 10px;
     font-size: 1.1rem;
     border-radius: 12px;
     cursor: pointer;
     transition: all 0.2s ease;
     
-    /* Con esto centramos el ícono arriba del texto */
     display: inline-flex;
     flex-direction: column;
     align-items: center;
@@ -44,7 +49,7 @@ h1 {
 
 .option-btn i {
     font-size: 2.5rem;
-    color: #666666; /* Ícono apagado por defecto */
+    color: #666666;
     transition: color 0.2s ease;
 }
 
@@ -52,23 +57,61 @@ h1 {
     background-color: #2a2a2a;
     border-color: #555555;
     transform: translateY(-3px);
+    box-shadow: 0 0 15px rgba(52, 152, 219, 0.25);
 }
 
 .option-btn:hover i {
-    color: #ffffff; /* El ícono se enciende al pasar el mouse */
+    color: #ffffff;
 }
+
 /* Colores de las marcas al pasar el mouse */
-.option-btn[data-brand="PlayStation"]:hover i { color: #006FCE; } /* Azul PlayStation */
+.option-btn[data-brand="PlayStation"]:hover i { color: #006FCE; }
 .option-btn[data-brand="PlayStation"]:hover { border-color: #006FCE; }
 
-.option-btn[data-brand="Xbox"]:hover i { color: #107C10; } /* Verde Xbox */
+.option-btn[data-brand="Xbox"]:hover i { color: #107C10; }
 .option-btn[data-brand="Xbox"]:hover { border-color: #107C10; }
 
-.option-btn[data-brand="Nintendo"]:hover i { color: #E60012; } /* Rojo Nintendo */
+.option-btn[data-brand="Nintendo"]:hover i { color: #E60012; }
 .option-btn[data-brand="Nintendo"]:hover { border-color: #E60012; }
 
-.option-btn[data-brand="PC"]:hover i { color: #0078D7; } /* Azul Windows */
+.option-btn[data-brand="PC"]:hover i { color: #0078D7; }
 .option-btn[data-brand="PC"]:hover { border-color: #0078D7; }
 
-.option-btn[data-brand="Móvil"]:hover i { color: #ffde21; } /* Verde Android */
+.option-btn[data-brand="Móvil"]:hover i { color: #4CAF50; }
 .option-btn[data-brand="Móvil"]:hover { border-color: #4CAF50; }
+
+/* Animaciones y Clases Dinámicas profesionales */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in {
+    animation: fadeIn 0.35s ease-out forwards;
+}
+
+.progress-wrapper {
+    width: 100%;
+    max-width: 450px;
+    margin: 0 auto 20px auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: #888;
+}
+
+.progress-bar-bg {
+    flex: 1;
+    height: 4px;
+    background: #222;
+    margin-left: 12px;
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    background: #3498db;
+    transition: width 0.3s ease;
+}

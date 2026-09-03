@@ -9,12 +9,12 @@ const platforms = [
     { id: 'Móvil', name: 'Móvil', icon: '<i class="fa-solid fa-mobile-screen"></i>' }
 ];
 
-// 2. Sub-opciones completas con catálogo histórico
+// 2. Sub-opciones completas con rangos de fechas
 const subPlatforms = {
     'PC': [
-        { id: '4', name: 'Gama Alta', icon: '<i class="fa-solid fa-desktop"></i>' },
-        { id: '4', name: 'Gama Media', icon: '<i class="fa-solid fa-laptop"></i>' },
-        { id: '4', name: 'Gama Baja', icon: '<i class="fa-solid fa-laptop-code"></i>' }
+        { id: '4', name: 'Gama Alta', icon: '<i class="fa-solid fa-desktop"></i>', dates: '2020-01-01,2026-12-31' },
+        { id: '4', name: 'Gama Media', icon: '<i class="fa-solid fa-laptop"></i>', dates: '2015-01-01,2021-12-31' },
+        { id: '4', name: 'Gama Baja', icon: '<i class="fa-solid fa-laptop-code"></i>', dates: '2000-01-01,2016-12-31' }
     ],
     'PlayStation': [
         { id: '187', name: 'PlayStation 5', icon: '<i class="fa-brands fa-playstation"></i>' },
@@ -46,7 +46,14 @@ const subPlatforms = {
     ]
 };
 
-// 3. Opciones de Género
+// 3. Opciones de Presupuesto / Tipo de Juego
+const priceRanges = [
+    { id: 'free-to-play', name: 'Gratis (Free-to-Play)', icon: '<i class="fa-solid fa-gift"></i>', tag: 'free-to-play' },
+    { id: 'indie', name: 'Económicos / Indie', icon: '<i class="fa-solid fa-tag"></i>', tag: 'indie' },
+    { id: 'aaa', name: 'Grandes Producciones (AAA)', icon: '<i class="fa-solid fa-gem"></i>', tag: 'masterpiece' }
+];
+
+// 4. Opciones de Género
 const genres = [
     { id: 'action', name: 'Acción', icon: '<i class="fa-solid fa-fire"></i>' },
     { id: 'sports', name: 'Deportes', icon: '<i class="fa-solid fa-futbol"></i>' },
@@ -54,7 +61,7 @@ const genres = [
     { id: 'shooter', name: 'Shooter', icon: '<i class="fa-solid fa-crosshairs"></i>' }
 ];
 
-// 4. Opciones de Modo de Juego
+// 5. Opciones de Modo de Juego
 const gameModes = [
     { id: 'singleplayer', name: 'Un Jugador', icon: '<i class="fa-solid fa-user"></i>' },
     { id: 'multiplayer', name: 'Multijugador', icon: '<i class="fa-solid fa-users"></i>' },
@@ -62,10 +69,14 @@ const gameModes = [
 ];
 
 let step = 1;
+const totalSteps = 5;
 let userAnswers = {
     brandName: '',
     platformId: '',
     platformName: '',
+    platformDates: '',
+    priceId: '',
+    priceName: '',
     genreId: '',
     genreName: '',
     modeId: '',
@@ -77,6 +88,18 @@ const optionsContainer = document.getElementById('options-container');
 
 function renderStep() {
     optionsContainer.innerHTML = '';
+    optionsContainer.className = 'fade-in';
+
+    // Barra de Progreso Superior
+    let progressHtml = `
+        <div class="progress-wrapper">
+            <span>Paso ${step} de ${totalSteps}</span>
+            <div class="progress-bar-bg">
+                <div class="progress-bar-fill" style="width: ${(step / totalSteps) * 100}%;"></div>
+            </div>
+        </div>
+    `;
+    optionsContainer.insertAdjacentHTML('beforeend', progressHtml);
 
     if (step === 1) {
         questionText.textContent = '¿Dónde tenés pensado jugar?';
@@ -105,6 +128,7 @@ function renderStep() {
             btn.onclick = () => {
                 userAnswers.platformId = opt.id;
                 userAnswers.platformName = opt.name;
+                userAnswers.platformDates = opt.dates || '';
                 step++;
                 renderStep();
             };
@@ -114,6 +138,23 @@ function renderStep() {
         crearBotonVolver();
     }
     else if (step === 3) {
+        questionText.textContent = '¿Qué presupuesto o tipo buscás?';
+        priceRanges.forEach(opt => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.innerHTML = `${opt.icon} <span>${opt.name}</span>`;
+            btn.onclick = () => {
+                userAnswers.priceId = opt.tag;
+                userAnswers.priceName = opt.name;
+                step++;
+                renderStep();
+            };
+            optionsContainer.appendChild(btn);
+        });
+
+        crearBotonVolver();
+    }
+    else if (step === 4) {
         questionText.textContent = '¿Qué ritmo de juego buscás?';
         genres.forEach(opt => {
             const btn = document.createElement('button');
@@ -130,7 +171,7 @@ function renderStep() {
 
         crearBotonVolver();
     }
-    else if (step === 4) {
+    else if (step === 5) {
         questionText.textContent = '¿Cómo preferís jugar?';
         gameModes.forEach(opt => {
             const btn = document.createElement('button');
@@ -149,18 +190,13 @@ function renderStep() {
 }
 
 function crearBotonVolver() {
-    const divider = document.createElement('div');
-    divider.style.width = '100%';
-    optionsContainer.appendChild(divider);
-
     const backBtn = document.createElement('button');
     backBtn.className = 'option-btn';
     backBtn.innerHTML = '<i class="fa-solid fa-arrow-left"></i> <span>Volver</span>';
-    backBtn.style.marginTop = '20px';
     backBtn.style.backgroundColor = '#222';
+    backBtn.style.marginTop = '20px';
+    backBtn.style.width = '100%';
     backBtn.style.flexDirection = 'row';
-    backBtn.style.minWidth = 'auto';
-    backBtn.style.padding = '10px 20px';
     
     backBtn.onclick = () => {
         step--; 
@@ -172,9 +208,12 @@ function crearBotonVolver() {
 
 async function fetchGameFromAPI() {
     questionText.textContent = 'Buscando en la base de datos...';
-    optionsContainer.innerHTML = '<p style="color: #888;">Conectando con RAWG...</p>';
+    optionsContainer.innerHTML = '<p style="color: #888; text-align: center; padding: 20px;">Conectando con RAWG...</p>';
 
-    const url = `https://api.rawg.io/api/games?key=${API_KEY}&platforms=${userAnswers.platformId}&genres=${userAnswers.genreId}&tags=${userAnswers.modeId}&ordering=-metacritic&page_size=10`;
+    let dateQuery = userAnswers.platformDates ? `&dates=${userAnswers.platformDates}` : '';
+    let tagsQuery = `${userAnswers.priceId},${userAnswers.modeId}`;
+    
+    const url = `https://api.rawg.io/api/games?key=${API_KEY}&platforms=${userAnswers.platformId}&genres=${userAnswers.genreId}&tags=${tagsQuery}${dateQuery}&ordering=-metacritic&page_size=20`;
 
     try {
         const response = await fetch(url);
@@ -182,13 +221,8 @@ async function fetchGameFromAPI() {
 
         if (data.results && data.results.length > 0) {
             const randomIndex = Math.floor(Math.random() * data.results.length);
-            const basicGameInfo = data.results[randomIndex];
-            
-            const detailUrl = `https://api.rawg.io/api/games/${basicGameInfo.id}?key=${API_KEY}`;
-            const detailResponse = await fetch(detailUrl);
-            const fullGameInfo = await detailResponse.json();
-
-            showResult(fullGameInfo);
+            const game = data.results[randomIndex];
+            showResult(game);
         } else {
             showError();
         }
@@ -200,6 +234,7 @@ async function fetchGameFromAPI() {
 
 function showResult(game) {
     questionText.textContent = '¡Este es tu próximo juego!';
+    optionsContainer.className = 'fade-in';
     
     let metaColor = '#4CAF50'; 
     if (game.metacritic < 75) metaColor = '#FFC107'; 
@@ -208,25 +243,37 @@ function showResult(game) {
 
     let votes = game.reviews_count > 999 ? (game.reviews_count / 1000).toFixed(1) + 'k' : (game.reviews_count || '--');
 
-    // 1. Plataformas compatibles con iconos
+    let brandColor = '#3498db';
+    let brandIcon = '<i class="fa-solid fa-gamepad"></i>';
+    if (userAnswers.brandName === 'PlayStation') { brandColor = '#006FCE'; brandIcon = '<i class="fa-brands fa-playstation"></i>'; }
+    else if (userAnswers.brandName === 'Xbox') { brandColor = '#107C10'; brandIcon = '<i class="fa-brands fa-xbox"></i>'; }
+    else if (userAnswers.brandName === 'Nintendo') { brandColor = '#E60012'; brandIcon = '<i class="fa-solid fa-gamepad"></i>'; }
+    else if (userAnswers.brandName === 'PC') { brandColor = '#0078D7'; brandIcon = '<i class="fa-brands fa-windows"></i>'; }
+    else if (userAnswers.brandName === 'Móvil') { brandColor = '#4CAF50'; brandIcon = '<i class="fa-brands fa-android"></i>'; }
+
     let platformsHtml = '';
     if (game.platforms && game.platforms.length > 0) {
-        platformsHtml = '<div style="display: flex; gap: 10px; justify-content: center; margin-bottom: 15px; color: #aaa; font-size: 1.1rem;" title="Disponibles en otras plataformas">';
+        platformsHtml = '<div style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-bottom: 20px;">';
         game.platforms.forEach(p => {
             const pName = p.platform.name.toLowerCase();
             let iconClass = 'fa-solid fa-gamepad';
-            if (pName.includes('windows') || pName.includes('pc')) iconClass = 'fa-brands fa-windows';
-            else if (pName.includes('playstation')) iconClass = 'fa-brands fa-playstation';
-            else if (pName.includes('xbox')) iconClass = 'fa-brands fa-xbox';
-            else if (pName.includes('switch') || pName.includes('nintendo')) iconClass = 'fa-solid fa-gamepad';
-            else if (pName.includes('android') || pName.includes('ios')) iconClass = 'fa-solid fa-mobile-screen';
+            let pColor = '#333';
             
-            platformsHtml += `<i class="${iconClass}" style="opacity: 0.8;" title="${p.platform.name}"></i>`;
+            if (pName.includes('windows') || pName.includes('pc')) { iconClass = 'fa-brands fa-windows'; pColor = '#0078D7'; }
+            else if (pName.includes('playstation')) { iconClass = 'fa-brands fa-playstation'; pColor = '#006FCE'; }
+            else if (pName.includes('xbox')) { iconClass = 'fa-brands fa-xbox'; pColor = '#107C10'; }
+            else if (pName.includes('switch') || pName.includes('nintendo')) { iconClass = 'fa-solid fa-gamepad'; pColor = '#E60012'; }
+            else if (pName.includes('android') || pName.includes('ios')) { iconClass = 'fa-solid fa-mobile-screen'; pColor = '#4CAF50'; }
+
+            platformsHtml += `
+                <span style="background: rgba(20,20,20,0.8); border: 1px solid ${pColor}; color: #ddd; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; display: flex; align-items: center; gap: 6px;">
+                    <i class="${iconClass}" style="color: ${pColor};"></i> ${p.platform.name}
+                </span>
+            `;
         });
         platformsHtml += '</div>';
     }
 
-    // 2. Enlaces directos a tiendas oficiales
     let storeUrl = `https://store.steampowered.com/search/?term=${encodeURIComponent(game.name)}`;
     let storeName = 'Buscar en Steam';
     let storeIcon = '<i class="fa-brands fa-steam"></i>';
@@ -245,63 +292,90 @@ function showResult(game) {
         storeIcon = '<i class="fa-solid fa-gamepad"></i>';
     }
 
+    let techCityBtn = '';
+    if (userAnswers.brandName === 'PC') {
+        let techCityQuery = game.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+        let techCityUrl = `https://technical.city/es/can-i-run-it/${techCityQuery}`;
+        techCityBtn = `
+            <a href="${techCityUrl}" target="_blank" style="display: block; background: rgba(22,22,22,0.85); color: #3498db; text-decoration: none; padding: 12px; border-radius: 8px; font-size: 0.9rem; font-weight: 500; margin-bottom: 15px; border: 1px solid #333; text-align: center; transition: background 0.2s;">
+                <i class="fa-solid fa-microchip"></i> ¿Lo corre mi PC? (Technical City)
+            </a>
+        `;
+    }
+
     optionsContainer.innerHTML = `
-        <div style="background: #1a1a1a; padding: 25px; border-radius: 16px; border: 1px solid #333; max-width: 450px; margin: 0 auto; box-shadow: 0 15px 35px rgba(0,0,0,0.6);">
-            <img src="${game.background_image}" alt="Portada de ${game.name}" style="width: 100%; border-radius: 10px; margin-bottom: 15px; height: 220px; object-fit: cover;">
+        <div style="background: #181818; border-radius: 16px; border: 1px solid #333; max-width: 460px; margin: 0 auto; box-shadow: 0 20px 40px rgba(0,0,0,0.8); overflow: hidden; position: relative; text-align: left;">
             
-            <h2 style="color: #ffffff; margin-top: 0; margin-bottom: 5px; font-size: 1.8rem; font-weight: 600;">${game.name}</h2>
-            <p style="font-size: 0.9rem; color: #888; margin-bottom: 15px;">Lanzamiento: ${game.released || 'Desconocido'}</p>
+            <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-image: url('${game.background_image}'); background-size: cover; background-position: center; filter: blur(16px) brightness(0.25); transform: scale(1.1); z-index: 0;"></div>
 
-            ${platformsHtml}
-
-            <!-- Panel de Puntajes Minimalista -->
-            <div style="display: flex; justify-content: space-between; background: #0f0f0f; padding: 20px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #222;">
+            <div style="position: relative; z-index: 1;">
                 
-                <div style="text-align: center; flex: 1;">
-                    <div style="font-size: 2.2rem; font-weight: bold; color: ${metaColor}; line-height: 1;">${game.metacritic || '--'}</div>
-                    <div style="font-size: 0.7rem; color: #aaa; text-transform: uppercase; margin-top: 8px; letter-spacing: 1px;">Metacritic<br><span style="font-size: 0.6rem; color: #666;">(Prensa)</span></div>
+                <div style="background: ${brandColor}; padding: 8px 15px; display: flex; align-items: center; justify-content: space-between; color: #fff; font-size: 0.8rem; font-weight: 600; letter-spacing: 0.5px;">
+                    <span style="display: flex; align-items: center; gap: 6px;">${brandIcon} ${userAnswers.brandName.toUpperCase()} - ${userAnswers.platformName}</span>
+                    <span style="opacity: 0.8; font-size: 0.75rem;"><i class="fa-solid fa-shield-check"></i> Recomendado</span>
                 </div>
 
-                <div style="width: 1px; background: #333; margin: 0 10px;"></div>
-                
-                <div style="text-align: center; flex: 1;">
-                    <div style="font-size: 2.2rem; font-weight: bold; color: #2196F3; line-height: 1;">${game.rating ? game.rating.toFixed(1) : '--'}</div>
-                    <div style="font-size: 0.7rem; color: #aaa; text-transform: uppercase; margin-top: 8px; letter-spacing: 1px;">Jugadores<br><span style="font-size: 0.6rem; color: #666;">(/5.0)</span></div>
+                <div style="padding: 25px;">
+                    <img src="${game.background_image}" alt="Portada de ${game.name}" style="width: 100%; border-radius: 10px; margin-bottom: 15px; height: 210px; object-fit: cover; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 10px 20px rgba(0,0,0,0.5);">
+                    
+                    <h2 style="color: #ffffff; margin-top: 0; margin-bottom: 5px; font-size: 1.7rem; font-weight: 600; text-shadow: 0 2px 4px rgba(0,0,0,0.8);">${game.name}</h2>
+                    <p style="font-size: 0.85rem; color: #aaa; margin-bottom: 15px;">Lanzamiento: ${game.released || 'Desconocido'}</p>
+
+                    <div style="display: flex; justify-content: space-between; background: rgba(15,15,15,0.85); padding: 18px; border-radius: 12px; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.08); backdrop-filter: blur(5px);">
+                        
+                        <div style="text-align: center; flex: 1;">
+                            <div style="font-size: 2rem; font-weight: bold; color: ${metaColor}; line-height: 1;">${game.metacritic || '--'}</div>
+                            <div style="font-size: 0.65rem; color: #aaa; text-transform: uppercase; margin-top: 6px; letter-spacing: 1px;">Metacritic</div>
+                        </div>
+
+                        <div style="width: 1px; background: rgba(255,255,255,0.1); margin: 0 10px;"></div>
+                        
+                        <div style="text-align: center; flex: 1;">
+                            <div style="font-size: 2rem; font-weight: bold; color: #2196F3; line-height: 1;">${game.rating ? game.rating.toFixed(1) : '--'}</div>
+                            <div style="font-size: 0.65rem; color: #aaa; text-transform: uppercase; margin-top: 6px; letter-spacing: 1px;">Jugadores</div>
+                        </div>
+
+                        <div style="width: 1px; background: rgba(255,255,255,0.1); margin: 0 10px;"></div>
+
+                        <div style="text-align: center; flex: 1;">
+                            <div style="font-size: 2rem; font-weight: bold; color: #E0E0E0; line-height: 1;">${votes}</div>
+                            <div style="font-size: 0.65rem; color: #aaa; text-transform: uppercase; margin-top: 6px; letter-spacing: 1px;">Votos</div>
+                        </div>
+
+                    </div>
+
+                    ${platformsHtml}
+                    ${techCityBtn}
+
+                    <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                        <a href="${storeUrl}" target="_blank" style="flex: 1; display: block; background: rgba(34,34,34,0.9); color: #fff; text-decoration: none; padding: 12px; border-radius: 8px; font-size: 0.9rem; font-weight: 500; border: 1px solid rgba(255,255,255,0.15); text-align: center;">
+                            ${storeIcon} ${storeName}
+                        </a>
+                        <button id="fav-btn" onclick="toggleFavorite('${encodeURIComponent(game.name)}', '${game.background_image}')" style="background: rgba(34,34,34,0.9); color: #ff4757; border: 1px solid rgba(255,255,255,0.15); padding: 0 15px; border-radius: 8px; cursor: pointer; font-size: 1.2rem;" title="Guardar en favoritos">
+                            <i class="fa-solid fa-heart"></i>
+                        </button>
+                    </div>
+
+                    <button onclick="shareGame('${game.name}')" style="width: 100%; background: rgba(37, 211, 102, 0.15); color: #25D366; border: 1px solid rgba(37, 211, 102, 0.3); padding: 10px; border-radius: 8px; font-size: 0.85rem; font-weight: 500; cursor: pointer; margin-bottom: 20px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                        <i class="fa-solid fa-share-nodes"></i> Compartir recomendación
+                    </button>
+
+                    <div style="display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px;">
+                        <span style="background: rgba(30,30,30,0.85); padding: 5px 10px; border-radius: 15px; font-size: 0.7rem; color: #ccc;">${userAnswers.platformName}</span>
+                        <span style="background: rgba(30,30,30,0.85); padding: 5px 10px; border-radius: 15px; font-size: 0.7rem; color: #ccc;">${userAnswers.priceName}</span>
+                        <span style="background: rgba(30,30,30,0.85); padding: 5px 10px; border-radius: 15px; font-size: 0.7rem; color: #ccc;">${userAnswers.genreName}</span>
+                        <span style="background: rgba(30,30,30,0.85); padding: 5px 10px; border-radius: 15px; font-size: 0.7rem; color: #aaa;">${userAnswers.modeName}</span>
+                    </div>
                 </div>
-
-                <div style="width: 1px; background: #333; margin: 0 10px;"></div>
-
-                <div style="text-align: center; flex: 1;">
-                    <div style="font-size: 2.2rem; font-weight: bold; color: #E0E0E0; line-height: 1;">${votes}</div>
-                    <div style="font-size: 0.7rem; color: #aaa; text-transform: uppercase; margin-top: 8px; letter-spacing: 1px;">Votos<br><span style="font-size: 0.6rem; color: #666;">(Total)</span></div>
-                </div>
-
-            </div>
-
-            <!-- Botones de Tienda y Favoritos -->
-            <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-                <a href="${storeUrl}" target="_blank" style="flex: 1; display: block; background: #222; color: #fff; text-decoration: none; padding: 12px; border-radius: 8px; font-size: 0.9rem; font-weight: 500; border: 1px solid #444; text-align: center;">
-                    ${storeIcon} ${storeName}
-                </a>
-                <button id="fav-btn" onclick="toggleFavorite('${encodeURIComponent(game.name)}', '${game.background_image}')" style="background: #222; color: #ff4757; border: 1px solid #444; padding: 0 15px; border-radius: 8px; cursor: pointer; font-size: 1.2rem;" title="Guardar en favoritos">
-                    <i class="fa-solid fa-heart"></i>
-                </button>
-            </div>
-
-            <!-- Etiquetas de Filtros -->
-            <div style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: center;">
-                <span style="background: #2a2a2a; padding: 6px 14px; border-radius: 20px; font-size: 0.8rem; color: #ddd;">${userAnswers.platformName}</span>
-                <span style="background: #2a2a2a; padding: 6px 14px; border-radius: 20px; font-size: 0.8rem; color: #ddd;">${userAnswers.genreName}</span>
-                <span style="background: #2a2a2a; padding: 6px 14px; border-radius: 20px; font-size: 0.8rem; color: #aaa;">${userAnswers.modeName}</span>
             </div>
         </div>
         
         <div style="display: flex; justify-content: center; gap: 15px; flex-wrap: wrap; margin-top: 30px;">
-            <button class="option-btn" style="min-width: auto; padding: 12px 25px; flex-direction: row; margin: 0; font-size: 1rem;" onclick="fetchGameFromAPI()">
-                <i class="fa-solid fa-rotate-right" style="font-size: 1.2rem;"></i> <span>Buscar otro igual</span>
+            <button style="background: #1a1a1a; color: #fff; border: 1px solid #333; padding: 12px 25px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 1rem; transition: all 0.2s;" onmouseover="this.style.borderColor='#3498db'" onmouseout="this.style.borderColor='#333'" onclick="fetchGameFromAPI()">
+                <i class="fa-solid fa-rotate-right"></i> <span>Buscar otro igual</span>
             </button>
-            <button class="option-btn" style="min-width: auto; padding: 12px 25px; flex-direction: row; margin: 0; background-color: #222; font-size: 1rem;" onclick="location.reload()">
-                <i class="fa-solid fa-house" style="font-size: 1.2rem;"></i> <span>Volver al inicio</span>
+            <button style="background: #222; color: #fff; border: 1px solid #333; padding: 12px 25px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 1rem; transition: all 0.2s;" onmouseover="this.style.borderColor='#555'" onmouseout="this.style.borderColor='#333'" onclick="location.reload()">
+                <i class="fa-solid fa-house"></i> <span>Volver al inicio</span>
             </button>
         </div>
     `;
@@ -309,7 +383,16 @@ function showResult(game) {
     verificarEstadoFavorito(game.name);
 }
 
-// 3. Lógica para guardar en Favoritos con localStorage
+function shareGame(gameName) {
+    const text = `¡Mirá el juego que me recomendó el buscador: ${gameName}! 🎮🔥`;
+    if (navigator.share) {
+        navigator.share({ title: 'Recomendación de Juego', text: text }).catch(() => {});
+    } else {
+        navigator.clipboard.writeText(text);
+        alert('¡Texto copiado al portapapeles para compartir con tus amigos!');
+    }
+}
+
 function toggleFavorite(gameName, gameImg) {
     let favorites = JSON.parse(localStorage.getItem('rawg_favorites')) || [];
     const nameDecoded = decodeURIComponent(gameName);
@@ -317,9 +400,9 @@ function toggleFavorite(gameName, gameImg) {
     const index = favorites.findIndex(fav => fav.name === nameDecoded);
     
     if (index > -1) {
-        favorites.splice(index, 1); // Lo saca si ya estaba
+        favorites.splice(index, 1);
     } else {
-        favorites.push({ name: nameDecoded, image: gameImg }); // Lo agrega
+        favorites.push({ name: nameDecoded, image: gameImg });
     }
 
     localStorage.setItem('rawg_favorites', JSON.stringify(favorites));
@@ -336,7 +419,7 @@ function verificarEstadoFavorito(gameName) {
         favBtn.style.background = '#ff4757';
         favBtn.style.color = '#fff';
     } else {
-        favBtn.style.background = '#222';
+        favBtn.style.background = 'rgba(34,34,34,0.9)';
         favBtn.style.color = '#ff4757';
     }
 }
