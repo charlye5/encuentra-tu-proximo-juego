@@ -23,19 +23,52 @@ h1 {
 }
 
 .option-btn {
-    background-color: #1e1e1e;
+    background-color: #1a1a1a;
     color: #ffffff;
     border: 1px solid #333333;
-    padding: 15px 30px;
+    padding: 20px 30px;
     margin: 10px;
-    font-size: 1.2rem;
-    border-radius: 8px;
+    font-size: 1.1rem;
+    border-radius: 12px;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
+    
+    /* Con esto centramos el ícono arriba del texto */
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 140px;
+    gap: 15px; 
+}
+
+.option-btn i {
+    font-size: 2.5rem;
+    color: #666666; /* Ícono apagado por defecto */
+    transition: color 0.2s ease;
 }
 
 .option-btn:hover {
-    background-color: #333333;
+    background-color: #2a2a2a;
     border-color: #555555;
     transform: translateY(-3px);
 }
+
+.option-btn:hover i {
+    color: #ffffff; /* El ícono se enciende al pasar el mouse */
+}
+/* Colores de las marcas al pasar el mouse */
+.option-btn[data-brand="PlayStation"]:hover i { color: #006FCE; } /* Azul PlayStation */
+.option-btn[data-brand="PlayStation"]:hover { border-color: #006FCE; }
+
+.option-btn[data-brand="Xbox"]:hover i { color: #107C10; } /* Verde Xbox */
+.option-btn[data-brand="Xbox"]:hover { border-color: #107C10; }
+
+.option-btn[data-brand="Nintendo"]:hover i { color: #E60012; } /* Rojo Nintendo */
+.option-btn[data-brand="Nintendo"]:hover { border-color: #E60012; }
+
+.option-btn[data-brand="PC"]:hover i { color: #0078D7; } /* Azul Windows */
+.option-btn[data-brand="PC"]:hover { border-color: #0078D7; }
+
+.option-btn[data-brand="Móvil"]:hover i { color: #ffde21; } /* Verde Android */
+.option-btn[data-brand="Móvil"]:hover { border-color: #4CAF50; }
