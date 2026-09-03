@@ -8,18 +8,51 @@ body {
     justify-content: center;
     align-items: center;
     min-height: 100vh;
+    overflow-x: hidden;
+}
+
+/* Fondo épico dinámico y nítido para la pantalla de bienvenida */
+/* Fondo épico nítido para la pantalla de bienvenida */
+.epic-bg {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-size: cover;
+    background-position: center;
+    filter: blur(0px) brightness(0.9); /* Sin desenfoque y con brillo natural */
+    transform: scale(1);
+    z-index: -2;
+    transition: background-image 1s ease-in-out;
+}
+
+/* Una capa oscura sutil pero independiente para que el texto resalte sin tocar la nitidez de la foto */
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.4); /* Oscurece solo un 40% por encima */
+    z-index: -1;
+    pointer-events: none;
 }
 
 #app-container {
     text-align: center;
     max-width: 600px;
     width: 90%;
+    position: relative;
+    z-index: 1;
 }
 
 h1 {
     font-size: 2rem;
     margin-bottom: 2rem;
     font-weight: 300;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.8);
 }
 
 #options-container {
@@ -30,7 +63,8 @@ h1 {
 }
 
 .option-btn {
-    background-color: #1a1a1a;
+    background-color: rgba(26, 26, 26, 0.85);
+    backdrop-filter: blur(5px);
     color: #ffffff;
     border: 1px solid #333333;
     padding: 20px 30px;
@@ -54,10 +88,10 @@ h1 {
 }
 
 .option-btn:hover {
-    background-color: #2a2a2a;
+    background-color: rgba(42, 42, 42, 0.95);
     border-color: #555555;
     transform: translateY(-3px);
-    box-shadow: 0 0 15px rgba(52, 152, 219, 0.25);
+    box-shadow: 0 0 20px rgba(52, 152, 219, 0.4);
 }
 
 .option-btn:hover i {
@@ -98,13 +132,14 @@ h1 {
     align-items: center;
     justify-content: space-between;
     font-size: 0.75rem;
-    color: #888;
+    color: #aaa;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
 }
 
 .progress-bar-bg {
     flex: 1;
     height: 4px;
-    background: #222;
+    background: rgba(255,255,255,0.2);
     margin-left: 12px;
     border-radius: 2px;
     overflow: hidden;

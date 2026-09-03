@@ -1,5 +1,13 @@
 const API_KEY = 'b7fb0c8c04464d2db1b82a2c07e068ff';
 
+// Colocá aquí los nombres de las imágenes que descargaste en tu carpeta (ej: 'fondo1.jpg', 'fondo2.jpg')
+const epicBackgrounds = [
+    'fondo1.jpg',
+    'fondo2.jpg',
+    'fondo3.jpg',
+    'fondo4.jpg'
+];
+
 // 1. Opciones principales de Plataforma
 const platforms = [
     { id: 'PC', name: 'PC', icon: '<i class="fa-brands fa-windows"></i>' },
@@ -12,9 +20,9 @@ const platforms = [
 // 2. Sub-opciones completas con rangos de fechas
 const subPlatforms = {
     'PC': [
-        { id: '4', name: 'Gama Alta', icon: '<i class="fa-solid fa-desktop"></i>', dates: '2020-01-01,2026-12-31' },
-        { id: '4', name: 'Gama Media', icon: '<i class="fa-solid fa-laptop"></i>', dates: '2015-01-01,2021-12-31' },
-        { id: '4', name: 'Gama Baja', icon: '<i class="fa-solid fa-laptop-code"></i>', dates: '2000-01-01,2016-12-31' }
+        { id: '4', name: 'Gama Alta', icon: '<i class="fa-solid fa-desktop"></i>', dates: '2018-01-01,2026-12-31' },
+        { id: '4', name: 'Gama Media', icon: '<i class="fa-solid fa-laptop"></i>', dates: '2012-01-01,2019-12-31' },
+        { id: '4', name: 'Gama Baja', icon: '<i class="fa-solid fa-laptop-code"></i>', dates: '2000-01-01,2013-12-31' }
     ],
     'PlayStation': [
         { id: '187', name: 'PlayStation 5', icon: '<i class="fa-brands fa-playstation"></i>' },
@@ -46,11 +54,11 @@ const subPlatforms = {
     ]
 };
 
-// 3. Opciones de Presupuesto / Tipo de Juego
+// 3. Opciones de Presupuesto / Tipo de Juego (Ajustado para AAA amplio)
 const priceRanges = [
     { id: 'free-to-play', name: 'Gratis (Free-to-Play)', icon: '<i class="fa-solid fa-gift"></i>', tag: 'free-to-play' },
     { id: 'indie', name: 'Económicos / Indie', icon: '<i class="fa-solid fa-tag"></i>', tag: 'indie' },
-    { id: 'aaa', name: 'Grandes Producciones (AAA)', icon: '<i class="fa-solid fa-gem"></i>', tag: 'masterpiece' }
+    { id: 'aaa', name: 'Grandes Producciones (AAA)', icon: '<i class="fa-solid fa-gem"></i>', tag: '' } // Sin tag estricto para incluir todos los tanques pesados
 ];
 
 // 4. Opciones de Género
@@ -68,7 +76,7 @@ const gameModes = [
     { id: 'co-op', name: 'Cooperativo', icon: '<i class="fa-solid fa-handshake"></i>' }
 ];
 
-let step = 1;
+let step = 0;
 const totalSteps = 5;
 let userAnswers = {
     brandName: '',
@@ -86,9 +94,75 @@ let userAnswers = {
 const questionText = document.getElementById('question-text');
 const optionsContainer = document.getElementById('options-container');
 
+// Creamos un elemento dinámico en el body para manejar el fondo épico
+let epicBgElement = document.createElement('div');
+epicBgElement.className = 'epic-bg';
+document.body.prepend(epicBgElement);
+
+function updateEpicBackground(customImage = null) {
+    epicBgElement.style.display = 'block';
+    if (customImage) {
+        epicBgElement.style.backgroundImage = `url('${customImage}')`;
+        epicBgElement.style.filter = 'blur(12px) brightness(0.35)';
+        epicBgElement.style.transform = 'scale(1.1)';
+    } else {
+        epicBgElement.style.filter = 'none';
+        epicBgElement.style.transform = 'scale(1)';
+        const randomBg = epicBackgrounds[Math.floor(Math.random() * epicBackgrounds.length)];
+        epicBgElement.style.backgroundImage = `url('${randomBg}')`;
+    }
+}
+
+// Spinner retro con animación y diseño incorporado
+function mostrarSpinnerRetro(mensaje = 'CARGANDO CARTUCHO...') {
+    optionsContainer.innerHTML = `
+        <div style="text-align: center; padding: 40px; font-family: 'Courier New', Courier, monospace;">
+            <div style="font-size: 3.5rem; color: #f1c40f; margin-bottom: 15px; display: inline-block; animation: retroPulse 0.6s infinite alternate;">
+                <i class="fa-solid fa-gamepad"></i>
+            </div>
+            <div style="font-size: 1.2rem; color: #fff; letter-spacing: 2px; text-shadow: 0 0 10px rgba(241, 196, 15, 0.9);">
+                ${mensaje}
+            </div>
+            <div style="margin-top: 15px; font-size: 0.9rem; color: #f39c12; letter-spacing: 3px;">
+                [ • • • • • ]
+            </div>
+        </div>
+        <style>
+            @keyframes retroPulse {
+                0% { opacity: 0.3; transform: scale(0.9); }
+                100% { opacity: 1; transform: scale(1.1); }
+            }
+        </style>
+    `;
+}
+
 function renderStep() {
+    updateEpicBackground();
     optionsContainer.innerHTML = '';
     optionsContainer.className = 'fade-in';
+
+    if (step === 0) {
+        questionText.textContent = '¿Cómo querés encontrar tu próximo juego?';
+        
+        const btnWizard = document.createElement('button');
+        btnWizard.className = 'option-btn';
+        btnWizard.innerHTML = '<i class="fa-solid fa-sliders"></i> <span>Elegir plataforma y filtros</span>';
+        btnWizard.onclick = () => {
+            step = 1;
+            renderStep();
+        };
+        optionsContainer.appendChild(btnWizard);
+
+        const btnRandom = document.createElement('button');
+        btnRandom.className = 'option-btn';
+        btnRandom.style.borderColor = '#e67e22';
+        btnRandom.innerHTML = '<i class="fa-solid fa-dice"></i> <span>Recomendado (Al azar)</span>';
+        btnRandom.onclick = () => {
+            fetchTotallyRandomGame();
+        };
+        optionsContainer.appendChild(btnRandom);
+        return;
+    }
 
     // Barra de Progreso Superior
     let progressHtml = `
@@ -115,6 +189,7 @@ function renderStep() {
             };
             optionsContainer.appendChild(btn);
         });
+        crearBotonInicio();
     } 
     else if (step === 2) {
         questionText.textContent = `¿Qué modelo de ${userAnswers.brandName} tenés?`;
@@ -206,34 +281,117 @@ function crearBotonVolver() {
     optionsContainer.appendChild(backBtn);
 }
 
-async function fetchGameFromAPI() {
-    questionText.textContent = 'Buscando en la base de datos...';
-    optionsContainer.innerHTML = '<p style="color: #888; text-align: center; padding: 20px;">Conectando con RAWG...</p>';
-
-    let dateQuery = userAnswers.platformDates ? `&dates=${userAnswers.platformDates}` : '';
-    let tagsQuery = `${userAnswers.priceId},${userAnswers.modeId}`;
+function crearBotonInicio() {
+    const homeBtn = document.createElement('button');
+    homeBtn.className = 'option-btn';
+    homeBtn.innerHTML = '<i class="fa-solid fa-house"></i> <span>Volver al menú principal</span>';
+    homeBtn.style.backgroundColor = '#222';
+    homeBtn.style.marginTop = '20px';
+    homeBtn.style.width = '100%';
+    homeBtn.style.flexDirection = 'row';
     
-    const url = `https://api.rawg.io/api/games?key=${API_KEY}&platforms=${userAnswers.platformId}&genres=${userAnswers.genreId}&tags=${tagsQuery}${dateQuery}&ordering=-metacritic&page_size=20`;
+    homeBtn.onclick = () => {
+        step = 0; 
+        renderStep(); 
+    };
+    
+    optionsContainer.appendChild(homeBtn);
+}
+
+async function fetchTotallyRandomGame() {
+    questionText.textContent = 'SYSTEM BOOT...';
+    mostrarSpinnerRetro('LEYENDO DATOS DE RAWG...');
+
+    const randomPage = Math.floor(Math.random() * 50) + 1;
+    const url = `https://api.rawg.io/api/games?key=${API_KEY}&page=${randomPage}&page_size=40&ordering=-metacritic`;
 
     try {
         const response = await fetch(url);
         const data = await response.json();
 
-        if (data.results && data.results.length > 0) {
-            const randomIndex = Math.floor(Math.random() * data.results.length);
-            const game = data.results[randomIndex];
-            showResult(game);
-        } else {
-            showError();
-        }
+        setTimeout(() => {
+            if (data.results && data.results.length > 0) {
+                const randomIndex = Math.floor(Math.random() * data.results.length);
+                const game = data.results[randomIndex];
+                
+                userAnswers.brandName = 'PC';
+                userAnswers.platformName = 'Multiplataforma';
+                userAnswers.priceName = 'Aleatorio';
+                userAnswers.genreName = 'Sorpresa';
+                userAnswers.modeName = 'General';
+
+                showResult(game);
+            } else {
+                showError();
+            }
+        }, 1000);
+
     } catch (error) {
         console.error("Error:", error);
         showError();
     }
 }
 
+async function fetchGameFromAPI() {
+    questionText.textContent = 'PROCESANDO FILTROS...';
+    mostrarSpinnerRetro('BUSCANDO JUEGAZO...');
+
+    // Elegimos una página al azar entre la 1 y la 5 para garantizar variedad total y evitar repeticiones
+    const randomPage = Math.floor(Math.random() * 5) + 1;
+
+    let dateQuery = userAnswers.platformDates ? `&dates=${userAnswers.platformDates}` : '';
+    let tagsQuery = userAnswers.priceId ? `&tags=${userAnswers.priceId}` : '';
+    let modeQuery = userAnswers.modeId ? `&tags=${userAnswers.modeId}` : '';
+    
+    const url = `https://api.rawg.io/api/games?key=${API_KEY}&platforms=${userAnswers.platformId}&genres=${userAnswers.genreId}${tagsQuery}${modeQuery}${dateQuery}&page=${randomPage}&page_size=40`;
+
+    try {
+        const response = await fetch(url);
+        const data = await response.json();
+
+        setTimeout(() => {
+            if (data.results && data.results.length > 0) {
+                const randomIndex = Math.floor(Math.random() * data.results.length);
+                const game = data.results[randomIndex];
+                showResult(game);
+            } else {
+                fetchFallbackGame();
+            }
+        }, 1000);
+
+    } catch (error) {
+        console.error("Error:", error);
+        showError();
+    }
+}
+
+async function fetchFallbackGame() {
+    let dateQuery = userAnswers.platformDates ? `&dates=${userAnswers.platformDates}` : '';
+    const url = `https://api.rawg.io/api/games?key=${API_KEY}&platforms=${userAnswers.platformId}&genres=${userAnswers.genreId}${dateQuery}&page_size=40`;
+
+    try {
+        const response = await fetch(url);
+        const data = await response.json();
+
+        setTimeout(() => {
+            if (data.results && data.results.length > 0) {
+                const randomIndex = Math.floor(Math.random() * data.results.length);
+                const game = data.results[randomIndex];
+                showResult(game);
+            } else {
+                showError();
+            }
+        }, 1000);
+
+    } catch (error) {
+        showError();
+    }
+}
+
 function showResult(game) {
-    questionText.textContent = '¡Este es tu próximo juego!';
+    updateEpicBackground(game.background_image);
+    
+    questionText.textContent = '¡ESTE ES TU PRÓXIMO JUEGO!';
     optionsContainer.className = 'fade-in';
     
     let metaColor = '#4CAF50'; 
@@ -311,7 +469,7 @@ function showResult(game) {
             <div style="position: relative; z-index: 1;">
                 
                 <div style="background: ${brandColor}; padding: 8px 15px; display: flex; align-items: center; justify-content: space-between; color: #fff; font-size: 0.8rem; font-weight: 600; letter-spacing: 0.5px;">
-                    <span style="display: flex; align-items: center; gap: 6px;">${brandIcon} ${userAnswers.brandName.toUpperCase()} - ${userAnswers.platformName}</span>
+                    <span style="display: flex; align-items: center; gap: 6px;">${brandIcon} ${userAnswers.brandName ? userAnswers.brandName.toUpperCase() : 'PC'} - ${userAnswers.platformName || 'General'}</span>
                     <span style="opacity: 0.8; font-size: 0.75rem;"><i class="fa-solid fa-shield-check"></i> Recomendado</span>
                 </div>
 
@@ -361,20 +519,20 @@ function showResult(game) {
                     </button>
 
                     <div style="display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px;">
-                        <span style="background: rgba(30,30,30,0.85); padding: 5px 10px; border-radius: 15px; font-size: 0.7rem; color: #ccc;">${userAnswers.platformName}</span>
-                        <span style="background: rgba(30,30,30,0.85); padding: 5px 10px; border-radius: 15px; font-size: 0.7rem; color: #ccc;">${userAnswers.priceName}</span>
-                        <span style="background: rgba(30,30,30,0.85); padding: 5px 10px; border-radius: 15px; font-size: 0.7rem; color: #ccc;">${userAnswers.genreName}</span>
-                        <span style="background: rgba(30,30,30,0.85); padding: 5px 10px; border-radius: 15px; font-size: 0.7rem; color: #aaa;">${userAnswers.modeName}</span>
+                        <span style="background: rgba(30,30,30,0.85); padding: 5px 10px; border-radius: 15px; font-size: 0.7rem; color: #ccc;">${userAnswers.platformName || 'General'}</span>
+                        <span style="background: rgba(30,30,30,0.85); padding: 5px 10px; border-radius: 15px; font-size: 0.7rem; color: #ccc;">${userAnswers.priceName || 'Todos'}</span>
+                        <span style="background: rgba(30,30,30,0.85); padding: 5px 10px; border-radius: 15px; font-size: 0.7rem; color: #ccc;">${userAnswers.genreName || 'Variado'}</span>
+                        <span style="background: rgba(30,30,30,0.85); padding: 5px 10px; border-radius: 15px; font-size: 0.7rem; color: #aaa;">${userAnswers.modeName || 'Cualquiera'}</span>
                     </div>
                 </div>
             </div>
         </div>
         
         <div style="display: flex; justify-content: center; gap: 15px; flex-wrap: wrap; margin-top: 30px;">
-            <button style="background: #1a1a1a; color: #fff; border: 1px solid #333; padding: 12px 25px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 1rem; transition: all 0.2s;" onmouseover="this.style.borderColor='#3498db'" onmouseout="this.style.borderColor='#333'" onclick="fetchGameFromAPI()">
+            <button style="background: #1a1a1a; color: #fff; border: 1px solid #333; padding: 12px 25px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 1rem; transition: all 0.2s;" onmouseover="this.style.borderColor='#3498db'" onmouseout="this.style.borderColor='#333'" onclick="userAnswers.brandName ? fetchGameFromAPI() : fetchTotallyRandomGame()">
                 <i class="fa-solid fa-rotate-right"></i> <span>Buscar otro igual</span>
             </button>
-            <button style="background: #222; color: #fff; border: 1px solid #333; padding: 12px 25px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 1rem; transition: all 0.2s;" onmouseover="this.style.borderColor='#555'" onmouseout="this.style.borderColor='#333'" onclick="location.reload()">
+            <button style="background: #222; color: #fff; border: 1px solid #333; padding: 12px 25px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 1rem; transition: all 0.2s;" onmouseover="this.style.borderColor='#555'" onmouseout="this.style.borderColor='#333'" onclick="step=0; renderStep();">
                 <i class="fa-solid fa-house"></i> <span>Volver al inicio</span>
             </button>
         </div>
@@ -425,11 +583,11 @@ function verificarEstadoFavorito(gameName) {
 }
 
 function showError() {
-    questionText.textContent = 'Hubo un problema';
+    questionText.textContent = 'ERROR DE SISTEMA';
     optionsContainer.innerHTML = `
-        <p style="color: #ccc;">No pudimos encontrar un juego con esos filtros exactos.</p>
-        <button class="option-btn" style="margin-top: 20px; min-width: auto; flex-direction: row;" onclick="step--; renderStep();">
-            <i class="fa-solid fa-arrow-left" style="font-size: 1.2rem;"></i> <span>Cambiar opciones</span>
+        <p style="color: #ccc; font-family: monospace;">No pudimos conectar con el cartucho de datos.</p>
+        <button class="option-btn" style="margin-top: 20px; min-width: auto; flex-direction: row;" onclick="step=0; renderStep();">
+            <i class="fa-solid fa-house" style="font-size: 1.2rem;"></i> <span>Volver al inicio</span>
         </button>
     `;
 }
