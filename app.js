@@ -127,9 +127,21 @@ let currentGameData = null;
 const questionText = document.getElementById('question-text');
 const optionsContainer = document.getElementById('options-container');
 
+// Elemento para las imágenes rotativas de fondo
 let epicBgElement = document.createElement('div');
 epicBgElement.className = 'epic-bg';
+epicBgElement.style.display = 'none'; 
 document.body.prepend(epicBgElement);
+
+// Elemento para el video del menú principal (fondo0.mp4)
+let epicBgVideo = document.createElement('video');
+epicBgVideo.autoplay = true;
+epicBgVideo.muted = true;
+epicBgVideo.loop = true;
+epicBgVideo.playsInline = true;
+epicBgVideo.style.cssText = 'position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; object-fit: cover; z-index: -2; filter: brightness(0.35); transition: opacity 0.5s ease;';
+epicBgVideo.innerHTML = '<source src="fondo0.mp4" type="video/mp4">';
+document.body.prepend(epicBgVideo);
 
 function initFavicon() {
     let link = document.querySelector("link[rel*='icon']") || document.createElement('link');
@@ -219,6 +231,65 @@ window.openFavoritesModal = function() {
 
     document.body.appendChild(overlay);
 };
+
+window.fetchTopDeals = async function() {
+    updateEpicBackground();
+    questionText.textContent = 'RASTREANDO DESCUENTOS...';
+    mostrarSpinnerRetro('BUSCANDO LAS MEJORES OFERTAS (PC)...');
+
+    try {
+        const response = await fetch('https://www.cheapshark.com/api/1.0/deals?sortBy=Deal Rating&pageSize=10&lowerPrice=1');
+        const deals = await response.json();
+
+        setTimeout(() => {
+            if(deals && deals.length > 0) {
+                showDealsList(deals);
+            } else {
+                showError();
+            }
+        }, 800);
+    } catch(e) {
+        showError();
+    }
+};
+
+function showDealsList(deals) {
+    questionText.textContent = '🔥 TOP 10: OFERTAS DEL DÍA (PC)';
+    optionsContainer.className = 'fade-in';
+
+    let listHtml = `
+        <div style="max-width: 480px; margin: 0 auto; text-align: left; display: flex; flex-direction: column; gap: 10px;">
+            <p style="color: #aaa; font-size: 0.85rem; margin: 0 0 5px 0; text-align: center;">Precios en USD. Hacé clic para ir a la tienda:</p>
+    `;
+
+    deals.forEach((d, index) => {
+        let rankNum = index + 1;
+        let discount = Math.round(d.savings);
+        
+        listHtml += `
+            <a href="https://www.cheapshark.com/redirect?dealID=${d.dealID}" target="_blank" style="display: flex; align-items: center; gap: 12px; background: rgba(20,20,20,0.9); border: 1px solid #e67e22; padding: 10px 14px; border-radius: 12px; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 10px rgba(0,0,0,0.5); text-decoration: none;" onmouseover="this.style.background='rgba(230,126,34,0.15)'; this.style.transform='scale(1.02)'" onmouseout="this.style.background='rgba(20,20,20,0.9)'; this.style.transform='scale(1)'">
+                <div style="font-size: 1.1rem; font-weight: bold; color: #e67e22; min-width: 25px; text-align: center;">#${rankNum}</div>
+                <img src="${d.thumb || ''}" style="width: 60px; height: 45px; object-fit: cover; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1);">
+                <div style="flex: 1; overflow: hidden;">
+                    <strong style="color: #fff; font-size: 0.95rem; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${d.title}</strong>
+                    <span style="color: #2ecc71; font-size: 0.85rem; font-weight: bold;">$${d.salePrice} <s style="color: #888; font-size: 0.7rem; margin-left: 5px;">$${d.normalPrice}</s></span>
+                </div>
+                <div style="background: #e67e22; color: #fff; font-size: 0.8rem; font-weight: bold; padding: 4px 8px; border-radius: 6px;">
+                    -${discount}%
+                </div>
+            </a>
+        `;
+    });
+
+    listHtml += `
+            <button class="option-btn" style="background: #222; border: 1px solid #444; padding: 12px; border-radius: 8px; color: #ccc; cursor: pointer; width: 100%; margin-top: 15px;" onclick="step=0; renderStep();">
+                <i class="fa-solid fa-house"></i> Volver al menú principal
+            </button>
+        </div>
+    `;
+
+    optionsContainer.innerHTML = listHtml;
+}
 
 window.openRankingsMenu = function() {
     updateEpicBackground();
@@ -533,17 +604,20 @@ window.fetchGameDetailsForDirectView = async function(gameName) {
     }
 };
 
+// --- LOGICA DE FONDO (VIDEO EN PASO 0, IMÁGENES ROTATIVAS EN EL RESTO) ---
 function updateEpicBackground(customImage = null) {
-    epicBgElement.style.display = 'block';
     if (customImage) {
+        epicBgVideo.style.opacity = '0';
+        epicBgElement.style.display = 'block';
         epicBgElement.style.backgroundImage = `url('${customImage}')`;
         epicBgElement.style.filter = 'blur(12px) brightness(0.35)';
         epicBgElement.style.transform = 'scale(1.1)';
     } else if (step === 0) {
-        epicBgElement.style.filter = 'none';
-        epicBgElement.style.transform = 'scale(1)';
-        epicBgElement.style.backgroundImage = `url('fondo0.jfif')`;
+        epicBgVideo.style.opacity = '1';
+        epicBgElement.style.display = 'none';
     } else {
+        epicBgVideo.style.opacity = '0';
+        epicBgElement.style.display = 'block';
         epicBgElement.style.filter = 'none';
         epicBgElement.style.transform = 'scale(1)';
         const randomBg = epicBackgrounds[Math.floor(Math.random() * epicBackgrounds.length)];
@@ -621,33 +695,150 @@ function renderStep() {
                     font-weight: 900;
                     letter-spacing: 1.5px;
                     text-transform: uppercase;
+                    text-align: center;
+                }
+                .top-row-container {
+                    display: flex;
+                    gap: 15px;
+                    margin-bottom: 25px;
+                    align-items: stretch;
+                    max-width: 480px;
+                    margin-left: auto;
+                    margin-right: auto;
+                }
+                .search-box-wrapper {
+                    flex: 1;
+                    background: #050505;
+                    padding: 16px;
+                    border-radius: 14px;
+                    border: 1px solid #222;
+                    box-shadow: 0 15px 35px rgba(0,0,0,0.8);
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: center;
+                    min-width: 0;
+                }
+                .search-inputs-flex {
+                    display: flex;
+                    gap: 8px;
+                    align-items: center;
+                }
+                .side-buttons-container {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 10px;
+                    flex-shrink: 0;
+                    width: 85px;
+                }
+                .rankings-btn-side {
+                    flex: 1;
+                    background: #050505;
+                    border: 1px solid #222;
+                    border-radius: 14px;
+                    color: #777;
+                    cursor: pointer;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 6px;
+                    box-shadow: 0 15px 35px rgba(0,0,0,0.8);
+                    transition: all 0.3s ease;
+                }
+                .rankings-btn-side i {
+                    font-size: 1.5rem;
+                }
+                .rankings-btn-side span {
+                    font-size: 0.65rem;
+                    font-weight: bold;
+                    text-transform: uppercase;
+                }
+                /* BARRA GRIS OSCURA QUE SE ILUMINA A BLANCA AL HACER CLIC */
+                .search-input-field {
+                    flex: 1;
+                    min-width: 0;
+                    background: #161616;
+                    border: 1px solid #333;
+                    color: #aaa;
+                    padding: 0 16px;
+                    border-radius: 21px;
+                    font-size: 0.95rem;
+                    font-weight: 500;
+                    outline: none;
+                    height: 42px;
+                    transition: all 0.3s ease;
+                }
+                .search-input-field:focus {
+                    background: #ffffff;
+                    color: #111;
+                    border-color: #ffffff;
+                    box-shadow: 0 0 12px rgba(255, 255, 255, 0.3);
+                }
+                .search-input-field::placeholder {
+                    color: #666;
+                }
+                .search-input-field:focus::placeholder {
+                    color: #888;
+                }
+
+                @media (max-width: 450px) {
+                    .top-row-container {
+                        flex-direction: column;
+                    }
+                    .side-buttons-container {
+                        flex-direction: row;
+                        width: 100%;
+                    }
+                    .rankings-btn-side {
+                        width: 100%;
+                        flex-direction: row;
+                        padding: 12px;
+                    }
+                    .rankings-btn-side i {
+                        font-size: 1.2rem;
+                    }
+                    .rankings-btn-side span {
+                        font-size: 0.85rem;
+                    }
+                    .main-cta-text {
+                        font-size: 1.1rem;
+                    }
                 }
             `;
             document.head.appendChild(style);
         }
 
         const topRowHtml = `
-            <div style="display: flex; gap: 15px; margin-bottom: 25px; align-items: stretch; max-width: 480px; margin-left: auto; margin-right: auto;">
-                <div style="flex: 1; background: rgba(20,20,20,0.85); padding: 16px; border-radius: 14px; border: 1px solid #3498db; box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: flex; flex-direction: column; justify-content: center;">
-                    <p style="color: #3498db; font-weight: bold; margin-top: 0; margin-bottom: 10px; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px;"><i class="fa-solid fa-magnifying-glass"></i> Buscador Directo</p>
-                    <div style="display: flex; gap: 8px; align-items: center;">
-                        <button onclick="fetchTotallyRandomGame()" title="Recomendado (Al azar)" style="background: #e67e22; color: #fff; border: none; width: 42px; height: 42px; border-radius: 8px; cursor: pointer; font-size: 0.95rem; flex-shrink: 0; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+            <div class="top-row-container">
+                <div class="search-box-wrapper">
+                    <p style="color: #777; font-weight: 500; margin-top: 0; margin-bottom: 10px; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1.5px;"><i class="fa-solid fa-magnifying-glass"></i> Buscador Directo</p>
+                    <div class="search-inputs-flex">
+                        <button onclick="fetchTotallyRandomGame()" title="Recomendado (Al azar)" style="background: transparent; color: #666; border: 1px solid #333; width: 42px; height: 42px; border-radius: 50%; cursor: pointer; font-size: 1rem; flex-shrink: 0; transition: all 0.3s ease;" onmouseover="this.style.background='#e67e22'; this.style.color='#fff'; this.style.borderColor='#e67e22'; this.style.transform='rotate(15deg) scale(1.1)'" onmouseout="this.style.background='transparent'; this.style.color='#666'; this.style.borderColor='#333'; this.style.transform='rotate(0deg) scale(1)'">
                             <i class="fa-solid fa-dice"></i>
                         </button>
-                        <input type="text" id="search-input-box" placeholder="Ej: GTA V, Minecraft..." style="flex: 1; min-width: 0; background: #111; border: 1px solid #444; color: #fff; padding: 12px 8px; border-radius: 8px; font-size: 0.9rem; outline: none; height: 42px;" onkeydown="if(event.key === 'Enter') searchGameByName()">
-                        <button onclick="searchGameByName()" title="Buscar" style="background: #3498db; color: #fff; border: none; width: 42px; height: 42px; border-radius: 8px; cursor: pointer; font-size: 0.95rem; flex-shrink: 0; font-weight: bold; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                        
+                        <input type="text" id="search-input-box" class="search-input-field" placeholder="Ej: GTA V..." onkeydown="if(event.key === 'Enter') searchGameByName()">
+                        
+                        <button onclick="searchGameByName()" title="Buscar" style="background: transparent; color: #666; border: 1px solid #333; width: 42px; height: 42px; border-radius: 50%; cursor: pointer; font-size: 1rem; flex-shrink: 0; transition: all 0.3s ease;" onmouseover="this.style.background='#3498db'; this.style.color='#fff'; this.style.borderColor='#3498db'; this.style.transform='scale(1.1)'" onmouseout="this.style.background='transparent'; this.style.color='#666'; this.style.borderColor='#333'; this.style.transform='scale(1)'">
                             <i class="fa-solid fa-arrow-right"></i>
                         </button>
-                        <button onclick="openFavoritesModal()" title="Ver Mis Favoritos" style="background: #ff4757; color: #fff; border: none; width: 42px; height: 42px; border-radius: 8px; cursor: pointer; font-size: 0.95rem; flex-shrink: 0; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                        
+                        <button onclick="openFavoritesModal()" title="Ver Mis Favoritos" style="background: transparent; color: #666; border: 1px solid #333; width: 42px; height: 42px; border-radius: 50%; cursor: pointer; font-size: 1rem; flex-shrink: 0; transition: all 0.3s ease;" onmouseover="this.style.background='#ff4757'; this.style.color='#fff'; this.style.borderColor='#ff4757'; this.style.transform='scale(1.1)'" onmouseout="this.style.background='transparent'; this.style.color='#666'; this.style.borderColor='#333'; this.style.transform='scale(1)'">
                             <i class="fa-solid fa-heart"></i>
                         </button>
                     </div>
                 </div>
 
-                <button onclick="openRankingsMenu()" title="Rankings" style="flex-shrink: 0; width: 85px; background: rgba(20,20,20,0.85); border: 1px solid #f1c40f; border-radius: 14px; color: #f1c40f; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); transition: all 0.2s;" onmouseover="this.style.background='rgba(241,196,15,0.1)'; this.style.transform='scale(1.05)'" onmouseout="this.style.background='rgba(20,20,20,0.85)'; this.style.transform='scale(1)'">
-                    <i class="fa-solid fa-trophy" style="font-size: 1.8rem;"></i>
-                    <span style="font-size: 0.7rem; font-weight: bold; text-transform: uppercase;">Rankings</span>
-                </button>
+                <div class="side-buttons-container">
+                    <button class="rankings-btn-side" onclick="openRankingsMenu()" title="Rankings" onmouseover="this.style.background='rgba(241,196,15,0.1)'; this.style.borderColor='#f1c40f'; this.style.color='#f1c40f'; this.style.transform='scale(1.05)'" onmouseout="this.style.background='#050505'; this.style.borderColor='#222'; this.style.color='#777'; this.style.transform='scale(1)'">
+                        <i class="fa-solid fa-trophy" style="margin-bottom: 2px;"></i>
+                        <span>Rankings</span>
+                    </button>
+                    <button class="rankings-btn-side" onclick="fetchTopDeals()" title="Ofertas del Día" onmouseover="this.style.background='rgba(230,126,34,0.1)'; this.style.borderColor='#e67e22'; this.style.color='#e67e22'; this.style.transform='scale(1.05)'" onmouseout="this.style.background='#050505'; this.style.borderColor='#222'; this.style.color='#777'; this.style.transform='scale(1)'">
+                        <i class="fa-solid fa-tags" style="margin-bottom: 2px;"></i>
+                        <span>Ofertas</span>
+                    </button>
+                </div>
             </div>
         `;
         optionsContainer.insertAdjacentHTML('beforeend', topRowHtml);
@@ -1078,10 +1269,10 @@ function showMainGameResult() {
         row1Icon = '⏱️'; row1Label = `Duración Estimada`; row2Icon = '🧠'; row2Label = `Complejidad / Desafío`; row3Icon = '⚙️'; row3Label = `Exigencia Tech`; row4Icon = '🏆'; row4Label = `Aprobación Global`;
         let isComplex = game.genres && game.genres.some(g => g.slug === 'strategy' || g.slug === 'role-playing-games' || g.slug === 'simulation');
         p2 = isComplex ? (Math.floor(Math.random() * 10) + 90) : (Math.floor(Math.random() * 15) + 75); 
+        p3 = (userAnswers.platformName.includes('Gama Alta') || userAnswers.brandName === 'PlayStation' || userAnswers.brandName === 'Xbox') ? 95 : 88;
         p4 = combinedScore;
     }
 
-    // LÓGICA DE EXIGENCIA AL HARDWARE
     let releaseYearForOpt = game.released ? parseInt(game.released.split('-')[0]) : 2018;
     let optText = 'Media Alta';
     let p3Width = 75;
@@ -1324,7 +1515,7 @@ function verificarEstadoFavorito(gameName) {
 function showError() {
     questionText.textContent = 'ERROR DE SISTEMA';
     optionsContainer.innerHTML = `
-        <div style="background: rgba(20,20,20,0.85); padding: 30px; border-radius: 16px; border: 1px solid #ff4757; text-align: center; max-width: 400px; margin: 0 auto; font-family: monospace;">
+        <div style="background: #050505; padding: 30px; border-radius: 16px; border: 1px solid #ff4757; text-align: center; max-width: 400px; margin: 0 auto; font-family: monospace; box-shadow: 0 15px 35px rgba(0,0,0,0.8);">
             <div style="font-size: 3.5rem; color: #ff4757; margin-bottom: 15px;"><i class="fa-solid fa-triangle-exclamation"></i></div>
             <p style="color: #fff; font-size: 1rem; margin-bottom: 20px;">No pudimos conectar con el cartucho de datos o no hubo resultados para esta combinación exacta.</p>
             <button class="option-btn" style="background: #3498db; border: none; padding: 12px; border-radius: 8px; color: #fff; cursor: pointer; font-weight: bold; margin-bottom: 10px; width: 100%;" onclick="step=0; renderStep();"><i class="fa-solid fa-rotate-right"></i> Volver a intentar</button>
