@@ -1,0 +1,151 @@
+@keyframes pulseGlow {
+    0% { box-shadow: 0 0 0 0 rgba(241, 196, 15, 0.5); }
+    70% { box-shadow: 0 0 0 20px rgba(241, 196, 15, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(241, 196, 15, 0); }
+}
+
+@keyframes retroPulse {
+    0% { opacity: 0.3; transform: scale(0.9); }
+    100% { opacity: 1; transform: scale(1.1); }
+}
+
+/* FONDOS FLUIDOS */
+.epic-bg {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw; height: 100vh;
+    background-size: cover;
+    background-position: center;
+    z-index: -2;
+    transition: background-image 1.2s ease-in-out, opacity 1.2s ease-in-out, transform 1.2s ease-in-out;
+}
+
+/* BOTÓN GIGANTE */
+.main-cta-btn {
+    width: 100%;
+    background: linear-gradient(145deg, #111 0%, #222 100%);
+    border: 2px solid #f1c40f;
+    border-radius: 20px;
+    padding: 30px 20px;
+    color: #fff;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    animation: pulseGlow 2.5s infinite;
+}
+
+.main-cta-btn:hover {
+    transform: scale(1.03) translateY(-5px);
+    background: linear-gradient(145deg, #1a1a1a 0%, #2a2a2a 100%);
+    box-shadow: 0 15px 35px rgba(241, 196, 15, 0.4);
+}
+
+.main-cta-icon {
+    font-size: 3.5rem;
+    color: #f1c40f;
+    filter: drop-shadow(0 0 10px rgba(241,196,15,0.5));
+}
+
+.main-cta-text {
+    font-size: 1.4rem;
+    font-weight: 900;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    text-align: center;
+}
+
+/* PANELES DE ARRIBA MONOCROMATICOS */
+.top-row-container {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 25px;
+    align-items: stretch;
+    max-width: 480px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.search-box-wrapper {
+    flex: 1;
+    background: #050505;
+    padding: 16px;
+    border-radius: 14px;
+    border: 1px solid #222;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.8);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 0;
+}
+
+.search-inputs-flex {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.side-buttons-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    flex-shrink: 0;
+    width: 85px;
+}
+
+.rankings-btn-side {
+    flex: 1;
+    background: #050505;
+    border: 1px solid #222;
+    border-radius: 14px;
+    color: #777;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.8);
+    transition: all 0.3s ease;
+}
+
+.rankings-btn-side i { font-size: 1.5rem; margin-bottom: 2px; }
+.rankings-btn-side span { font-size: 0.65rem; font-weight: bold; text-transform: uppercase; }
+
+/* EL BUSCADOR (GRIS OSCURO A BLANCO EN FOCUS) */
+.search-input-field {
+    flex: 1;
+    min-width: 0;
+    background: #161616;
+    border: 1px solid #333;
+    color: #aaa;
+    padding: 0 16px;
+    border-radius: 21px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    outline: none;
+    height: 42px;
+    transition: all 0.3s ease;
+}
+
+.search-input-field:focus {
+    background: #ffffff;
+    color: #111;
+    border-color: #ffffff;
+    box-shadow: 0 0 12px rgba(255, 255, 255, 0.3);
+}
+
+.search-input-field::placeholder { color: #666; }
+.search-input-field:focus::placeholder { color: #888; }
+
+/* RESPONSIVE MÓVIL */
+@media (max-width: 450px) {
+    .top-row-container { flex-direction: column; }
+    .side-buttons-container { flex-direction: row; width: 100%; }
+    .rankings-btn-side { width: 100%; flex-direction: row; padding: 12px; }
+    .rankings-btn-side i { font-size: 1.2rem; }
+    .rankings-btn-side span { font-size: 0.85rem; }
+    .main-cta-text { font-size: 1.1rem; }
+}
